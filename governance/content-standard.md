@@ -10,7 +10,9 @@
 6. 指标必须说明数据范围、样本量、评测口径、基线和变量，避免孤立数字。
 7. canonical 内容应能帮助未来做决策或复现实验，而不只是阅读。
 
-## Required metadata
+## Knowledge-entry metadata
+
+以下字段适用于 foundations、engineering、research 与 productization 中的知识条目。治理 decision record 使用独立的 `accepted | superseded` 决策状态，`projects/registry.yaml` 也使用项目状态；二者不得与知识成熟度混用。
 
 ```yaml
 status: working | validated | canonical
@@ -40,7 +42,7 @@ confidence: low | medium | high
 | Status | Gate |
 |---|---|
 | working | 问题、来源、证据缺口和下一步已写清；允许结论为空 |
-| validated | 关键判断有新鲜、可寻址的证据；本人审查已接受；IP 状态允许保留 |
+| validated | 关键判断有新鲜、可寻址的证据；`owner_review: accepted`；`ip_review` 为 `accepted` 或 `not-applicable` |
 | canonical | 重要替代解释已被区分，边界与版本明确，可复现或稳定复用，且验收证据不是生成内容的自述 |
 
 任何 Agent 都不得仅凭聊天历史、文档内部自洽或自己的复述完成晋级。
