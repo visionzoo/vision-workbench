@@ -1,52 +1,44 @@
 # Evaluation
 
-## Official result is not independent verification
+模型评测分成两件事：第一方资料告诉我“这个分支大致处在什么位置”，个人复测回答“它在我的数据和硬件上是否可用”。两者不能混写。
 
-论文、作者仓库或维护组织文档中的结果统一标记为 `first-party reported`。本条目尚未运行统一环境复测，因此不提供跨分支的“最好”排序。
+## 少量第一方事实
 
-## Required tuple
+下表只保留能支撑当前选型的代表项，不用于跨来源总排名。
 
-任何 AP、FPS、延迟、参数量或计算量必须绑定：
+| 模型 | 第一方报告条件 | 精度 | 规模与速度 | 能说明什么 | Source |
+|---|---|---|---|---|---|
+| YOLO11n | COCO val、640、检测 | mAP50-95 39.5 | 2.6M 参数、6.5B FLOPs；CPU ONNX 56.1 ms，T4 TensorRT10 1.5 ms | Ultralytics nano 闭集检测基线；速度仅适用于文档标注环境 | Y019 |
+| YOLO26n | COCO val、640、检测 | 一对多 mAP50-95 40.9；默认 e2e 40.1 | 融合后 2.4M 参数、5.4B FLOPs；CPU ONNX 38.9 ms，T4 TensorRT10 1.7 ms | 默认一对一 head 更便于免 NMS 部署，但精度和输出语义与一对多 head 不同 | Y023 |
+| YOLOX-s | COCO val、640、检测 | mAP50-95 40.5 | 9.0M 参数、26.8G FLOPs；V100 9.8 ms | 可作为 anchor-free、解耦头和动态匹配路线的参考 | Y008 |
+
+这些数字是第一方报告，不是本人复测。CPU、T4 和 V100 的速度不能横向比较；YOLO26 表中的参数量和 FLOPs 是融合并移除辅助一对多 head 后的模型。
+
+## 厂商适配事实
+
+RKNN Model Zoo 当前列出 YOLO11n/s/m 的 FP16/INT8 示例，并把 RV1126B 列为支持平台（Y025）。这只证明厂商示例覆盖了该模型族、精度和 SoC 组合，不证明任意自训练 YOLO11 都能直接对齐，也不能把 Model Zoo 其他芯片的 FPS 当作 RV1126B 实测。
+
+## 本人复测怎么做
+
+先固定同一批输入、同一套预处理和同一任务级 Oracle，再逐级比较：
 
 ```text
-model + weights + task + dataset/version/split + evaluator
-+ input shape + precision + batch + hardware + runtime
-+ warm-up/repeats + timing boundary + source revision
+训练框架 → ONNX → 浮点板端模型 → INT8 板端模型
 ```
 
-开放词汇模型还必须记录：
+至少保留：
 
-```text
-prompt mode + vocabulary/class set + text encoder or cached embeddings
-+ zero-shot/fine-tuned setting + pretraining-data disclosure
-```
+- 数据集版本、样本量、类别和目标尺寸分层；
+- precision、recall、F1 或 AP 的定义和阈值；
+- 框匹配 IoU、类别一致率和分数偏移；
+- 预处理、后处理和 NMS/一对一输出设置；
+- 芯片、runtime、频率、batch、warm-up、重复次数和计时边界。
 
-缺少关键条件的数字可以作为线索，但不能进入正式比较表。
+性能至少分成模型执行和完整链路。完整链路包括输入转换、内存拷贝、decode、NMS 以及必要的视频处理。
 
-## Detection quality
+## 当前个人结果
 
-- COCO 常用 `AP@[.50:.95]`，同时可能报告 AP50、AP75 和按目标尺寸分组的 AP；不得把 AP50 与 AP@[.50:.95] 混排。
-- VOC 不同年份和 evaluator 的 AP 定义可能不同；必须保留数据集年份和评价实现。
-- YOLO-World/YOLOE 常涉及 LVIS、zero-shot、prompted 或开放词汇评价，不能与闭集 COCO AP 直接排名。
-- 多任务版本的 detection、segmentation、pose、OBB 指标不能互相替代。
-- 同名权重在不同代码版本、输入尺寸、TTA、词汇设置或 NMS 设置下可能产生不同结果。
+- [海思 INT8 局部目标案例](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)：PC 端 F1 约 0.8；板端存在阈值敏感的少检现象。尚缺同一评测集上的 ONNX/OM 成对指标和完整延迟记录。
+- [RV1126B RKNN INT8 案例](../../../../engineering/cases/yolo11-rv1126b-rknn-int8-alignment.md)：实验链路已确定，最终精度和性能指标尚未形成，不能借用厂商 benchmark 或另一个芯片案例补齐。
 
-## Runtime
-
-- 论文中的 GPU latency、第一方导出 benchmark、端到端应用 FPS 是三种不同测量。
-- 预处理、文本编码/词汇缓存、H2D/D2H、decode、NMS、跟踪和视频解码是否计时必须明确。
-- batch=1 的实时延迟与批处理吞吐量不能互相替代。
-- 硬件峰值算力不能推导真实延迟；算子支持、内存访问和图优化会改变结果。
-
-## First-party tables
-
-指标不复制为易过期的聚合排名，直接引用对应来源：
-
-- 原始 YOLOv1–v3：论文和 Darknet YOLO 页面；
-- 其他可归属正式分支：各自论文、作者/维护组织仓库和版本化模型文档；
-- Ultralytics YOLO11/YOLO26：对应文档的性能表及其测试条件；
-- YOLO-World/YOLOE：对应作者仓库中按数据集、prompt 模式和训练设置区分的表；
-- 导出格式基准：对应 exporter/runtime 的文档，但结果只适用于其标注环境；
-- 生态复现或芯片移植：只能标为该生态实现报告结果，不能改写为模型原作者结果。
-
-入口集中在 [sources.md](sources.md)。将来形成统一复测后，应另建 `engineering/cases/` 记录环境和原始结果，再在此链接摘要。
+任何指标都要能回到工程案例；缺少模型、数据、输入、阈值、硬件或 runtime 的孤立数字不进入这里。Source ID 见 [Sources](sources.md)。

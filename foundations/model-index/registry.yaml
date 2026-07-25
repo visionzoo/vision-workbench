@@ -11,9 +11,11 @@ families:
     path: families/yolo
     roles: [task-model]
     primary_tasks: [object-detection]
-    status: sample-accepted
+    status: working
     evidence_status: partial
+    structure_review: accepted
+    content_review: pending
     owner_use: confirmed
     scope: "主要、可追溯的实时检测分支，不穷举所有带 YOLO 名称的项目。"
     authority_note: "YOLOv3 之后没有覆盖全部分支的单一维护组织。"
-    next_gate: "按实际需要单独确认并建设下一个模型族，不批量复制 YOLO 目录。"
+    next_gate: "完成两个真实工程案例、查询检查和本人内容验收后，再决定是否合并主干或建设下一个模型族。"

@@ -27,13 +27,12 @@
 
 全局修改和提交规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-## Initial focus
+## Current focus
 
-以下内容是启动入口，不是已经验证的成果：
-
-1. [Model quantization and accuracy alignment](engineering/diagnostics/model-quantization-accuracy-alignment.md)
-2. [Vision algorithm release and delivery](engineering/playbooks/vision-algorithm-release-and-delivery.md)
-3. [DMS eye visibility and localization reliability](research/questions/dms-eye-visibility-and-localization-reliability.md)
+1. [YOLO](foundations/model-index/families/yolo/README.md)：目录样板已验收，正在用真实训练与板端案例完成第一版内容闭环。
+2. [Model quantization and accuracy alignment](engineering/diagnostics/model-quantization-accuracy-alignment.md)：诊断框架草稿，尚未独立验证。
+3. [Vision algorithm release and delivery](engineering/playbooks/vision-algorithm-release-and-delivery.md)：发布流程草稿，尚未独立验证。
+4. [DMS eye visibility and localization reliability](research/questions/dms-eye-visibility-and-localization-reliability.md)：研究问题草稿，尚未独立验证。
 
 ## Working rule
 

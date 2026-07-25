@@ -1,50 +1,51 @@
 # Data and training
 
-## Evidence rule
+这一页不保存所有分支的训练配方，只保留迁移到自有数据时真正会改变结果的判断。具体命令、配置和实验结果进入工程案例。
 
-训练信息只记录对应作者明确披露的内容。预训练数据、额外数据、蒸馏教师、增强策略或训练预算没有披露时写 `not disclosed`，不能根据代码默认值或相邻版本推断。
+## 训练前先回答四件事
 
-## Version-level record
+1. **目标还有多少有效像素**：小目标已经缩成几个像素时，换 loss 或换大模型通常救不回来；先看裁剪、输入尺寸和特征层。
+2. **标签是否完整且一致**：漏标会把正确预测当背景，框边界和遮挡规则不一致会直接污染定位监督。
+3. **预训练模型与新任务差多远**：类别少不等于任务简单；IR、局部裁剪、极端视角和新尺寸分布都可能让通用 COCO 预训练失配。
+4. **训练输入能否在部署端复现**：颜色、range、resize、padding 和 normalization 如果不能对齐，训练指标再高也不能直接转成板端结果。
 
-每个可比较训练记录至少包含：
+## 真正值得调的变量
 
-```yaml
-model:
-source_revision:
-initialization:
-training_datasets:
-validation_dataset:
-image_size:
-epochs_or_schedule:
-batch_and_hardware:
-optimizer:
-augmentation:
-label_assignment:
-distillation:
-official_weights:
-undisclosed:
-```
+| 变量 | 它实际改变什么 | 常见误区 |
+|---|---|---|
+| 输入尺寸和裁剪 | 目标有效像素、上下文和算力 | 只加分辨率，不检查裁剪后目标是否仍可见 |
+| 输出特征层 | 不同尺度的候选位置与计算量 | 认为增加 P2/P3 一定提升小目标，忽略标签、噪声和延迟 |
+| 冻结与解冻 | 新任务适配速度和预训练特征保留程度 | 把固定冻结 epoch 当成通用配方 |
+| 学习率、batch、梯度累积 | 优化噪声和有效步长 | 单独改 batch 却沿用原学习率结论 |
+| mosaic、mixup、随机裁剪 | 场景组合、尺度和上下文分布 | 局部目标任务仍机械沿用通用增强 |
+| 标签分配 | 正样本数量和质量 | 只看总 loss，不检查小目标拿到了多少正样本 |
 
-## What first-party sources establish
+## 代表性分支说明了什么
 
-- YOLOv1–v3 的训练数据、预训练与增强应以各自论文和 Darknet 页面为准；不能把现代 Ultralytics 默认训练参数回填到原始版本。
-- YOLOv4、Scaled-YOLOv4、YOLOR、YOLOX、PP-YOLO 系列、YOLOv6/7/9/10/12/13、DAMO-YOLO、Gold-YOLO 等由各自论文与作者仓库给出 recipe、配置或权重入口；跨仓库配置名相同不代表 recipe 等价。
-- Ultralytics YOLOv5、YOLOv8、YOLO11、YOLO26 的支持任务、训练命令、数据格式和预训练权重以对应 release 的文档、源码和配置为准；当前在线文档可能更新，复现时必须冻结 package version 和配置。
-- YOLO-World、YOLOE、YOLOE-26 属于开放词汇路线，必须额外记录检测、grounding、图文等预训练数据，文本编码器/词汇构建、prompt 模式和是否进行词汇重参数化；不能套用闭集 COCO 训练记录。
-- YOLO-NAS 等含 NAS、蒸馏或专有搜索过程的模型，应区分已发布网络/权重与未公开的搜索过程；无法复现的部分明确写 `not disclosed`。
-- “在 COCO 上报告指标”不自动证明只使用 COCO 训练；必须检查论文、模型卡和仓库是否披露额外数据或预训练。
-- 第三方框架迁移的权重不能沿用上游训练描述而不记录迁移、转换或再训练过程。
+- YOLOX 使用 anchor-free、解耦头和 SimOTA；其价值是提供一条可读性较好的动态匹配基线，不表示它在任意私有数据上自动优于其他分支（Y008）。
+- YOLO11 的主要依据是 Ultralytics 文档、源码和 release；官方没有发布正式论文，因此复现实验必须冻结 package 和配置，不能从营销性概述补出未披露的训练细节（Y019）。
+- YOLO26 引入 Progressive Loss 与 STAL，官方说明 STAL 用于改善小目标正样本覆盖；同时提供 P2/P6 架构配置，但没有发布对应规模的 P2/P6 预训练权重。是否适合自有小目标任务仍要重新训练验证（Y023）。
+- YOLO-World、YOLOE 和 YOLOE-26 需要额外记录图文预训练、prompt、文本编码器或词汇缓存，不能直接套用闭集检测训练记录（Y018、Y021、Y023）。
 
-## Transfer to private datasets
+## 本人实验得到的当前判断
 
-第一方 recipe 是基线而不是通用最优解。迁移时至少重新验证：
+[YOLO11n 局部目标案例](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)使用 224×224、单类和局部目标数据建立了训练—ONNX—INT8 链路。当前能确认的是：
 
-- 类别频率、目标尺寸和遮挡分布；
-- 输入分辨率与有效目标像素；
-- mosaic、mixup、随机裁剪对任务语义的影响；
-- anchor、label assignment 与正样本数量；
-- 冻结/解冻、学习率和 batch size 的耦合；
-- 开放词汇模型的 prompt、负类别、词汇缓存和域内文本表达；
-- 训练预处理与部署预处理的一致性。
+- 轻量模型可以先把局部目标任务跑通；
+- PC 端 F1 约 0.8 只说明该评测集和阈值下的结果，不能代替板端对齐；
+- 板端降低阈值后恢复漏检，首先提示分数分布或输出解释发生变化，不能据此断定根因已经解决。
 
-私人数据集上的经验进入 `research/experiments/` 或 `engineering/cases/`，只把跨任务复现稳定的结论回写 Foundations。
+冻结 backbone 约 15 epoch、再解冻长训等做法目前仍属于待比较方案，不写成已经验证的通用结论。
+
+## 每次训练最少保存什么
+
+不保留空模板，只要求能回答复现问题：
+
+- 代码 revision、模型和初始权重哈希；
+- 数据清单、split、类别与标注规则；
+- 输入、增强、主要超参和冻结策略；
+- 最佳权重选择依据；
+- 整体指标、目标尺寸分层和典型失败样本；
+- 与导出、板端完全一致的预处理说明。
+
+Source ID 见 [Sources](sources.md)。
