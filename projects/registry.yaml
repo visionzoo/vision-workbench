@@ -1,0 +1,20 @@
+schema_version: 1
+public_entry:
+  current: github-profile-readme
+  portfolio_repository:
+    name: vision-portfolio
+    create_when:
+      minimum_mature_public_projects: 3
+      additional_condition: profile-readme-is-no-longer-clear
+    status: deferred
+
+projects: []
+
+# Add one entry per independent repository:
+# - id: example-project
+#   repository: visionzoo/example-project
+#   visibility: private
+#   status: incubating # incubating | validating | public | archived
+#   source_topic: engineering/diagnostics/example.md
+#   ip_review: pending
+#   last_reviewed: YYYY-MM-DD
