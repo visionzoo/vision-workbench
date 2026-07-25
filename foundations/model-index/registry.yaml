@@ -2,7 +2,7 @@ schema_version: 2
 
 role_definitions:
   task-model: "能直接输出检测、分类等任务结果。"
-  backbone: "负责提取特征，需要接任务头。"
+  backbone: "负责提取特征或视觉 token，需要接任务头、LLM 或 policy。"
   component: "可复用的结构、损失、分配方法或后处理。"
 
 families:
@@ -19,3 +19,17 @@ families:
     scope: "主要、可追溯的实时检测分支，不穷举所有带 YOLO 名称的项目。"
     authority_note: "YOLOv3 之后没有覆盖全部分支的单一维护组织。"
     next_gate: "完成两个真实工程案例、查询检查和本人内容验收后，再决定是否合并主干或建设下一个模型族。"
+
+  - id: turingvit
+    name: TuringViT
+    path: families/turingvit
+    roles: [backbone]
+    primary_tasks: [visual-encoding]
+    status: working
+    evidence_status: partial
+    structure_review: pending
+    content_review: pending
+    owner_use: not-confirmed
+    scope: "面向高分辨率图像与视频的视觉编码器；关注 TLA、动态分辨率、数据治理和硬件协同边界。"
+    authority_note: "当前由小鹏官方项目页和论文定义；代码、权重与独立复现尚未公开。"
+    next_gate: "等待代码或权重、第三方复现及真实目标硬件结果，再判断工程采用价值。"

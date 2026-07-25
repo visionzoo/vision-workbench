@@ -1,7 +1,7 @@
 ---
-title: TuringViT as a physical-AI vision backbone
+title: TuringViT visual encoder
 status: working
-type: case
+type: model-index
 rigor: standard
 created: 2026-07-25
 updated: 2026-07-25
@@ -10,21 +10,21 @@ provenance: public-first-party-sources
 evidence_status: partial
 owner_review: pending
 ip_review: not-applicable
-tags: [visual-model-intelligence, turingvit, vision-backbone, high-resolution-vision, vlm, vla, edge-ai, hardware-software-codesign]
-related: [../README.md, ../protocol.md, ../registry.yaml]
+tags: [turingvit, vision-backbone, high-resolution-vision, video-encoder, edge-ai, hardware-software-codesign]
+related: [../../README.md, ../../registry.yaml]
 ---
 
-# TuringViT：从视觉编码器切入物理 AI
+# TuringViT：视觉编码器方案与适用边界
 
-## Evidence boundary
+## 证据边界
 
 本案例基于 TuringViT 官方项目页、论文和小鹏公开材料。当前未发现官方代码、公开权重、第三方复现、车端芯片实测或完整 VLM/VLA 端到端归因实验。因此，下文可用于理解官方架构与形成验证问题，不能视为已经证明其适合 RKNN、海思、地平线或具体生产系统。
 
-## 1. Research question
+## 1. 核心判断问题
 
 TuringViT 的关键价值是否在于提出了一个更强的视觉模型，还是在于把视觉编码器建设成可被智驾、座舱、机器人、VLM 和 VLA 复用的平台级资产？这一做法对一般视觉团队有哪些可迁移部分，哪些只在拥有大规模数据、自研芯片和多业务场景时成立？
 
-## 2. System role
+## 2. 系统角色
 
 TuringViT 不是完整 VLM，也不是完整 VLA。它把图像或视频帧转换为视觉 token，下游仍需连接检测/分割 head、projector + LLM、世界模型、policy 或动作解码器。
 
@@ -39,7 +39,7 @@ TuringViT vision encoder
 
 与常见 VLM/VLA 的应用差别不是它直接完成更多任务，而是小鹏试图让多个物理 AI 系统复用同一视觉架构、数据流程和部署能力。
 
-## 3. Architecture facts
+## 3. 架构事实
 
 官方披露的 Turing Block 采用 5 层 Turing Linear Attention（TLA）加 1 层标准 Multi-head Attention。18 层版本包含 3 个 Block，24 层版本包含 4 个 Block；公开配置还包括 Patch 16、1280 维 embedding、20 个 attention head、2D RoPE、RMSNorm 和 SwiGLU。
 
@@ -49,7 +49,7 @@ TLA 通过先计算 `KᵀV` 再与 `Q` 相乘，避免显式构造 `N×N` attent
 
 官方称其为 linear-complexity ViT，但保留标准 MHA 后，严格最坏复杂度仍包含二次项。更准确的表述是：**线性注意力主导、实际高分辨率延迟增长更平缓的混合 ViT。**
 
-## 4. Training and data facts
+## 4. 训练与数据事实
 
 公开训练包含四个阶段：
 
@@ -62,7 +62,7 @@ VISTA-Curation 使用多模型、多 prompt 生成候选描述，再通过视觉
 
 官方消融显示，重新生成高质量 caption 和动态分辨率带来的增益大于常规数据增强。这支持一个重要解释：**TuringViT 的收益不能只归因于 TLA，新数据描述和输入分辨率策略可能是主要贡献。**
 
-## 5. Video capability boundary
+## 5. 视频能力边界
 
 论文中的视频路径主要是逐帧编码、每帧 attention pooling，再进行时间平均。公开材料没有展示原生时空 attention、长期记忆、多摄像头几何融合、ego-motion 补偿或目标轨迹建模。
 
@@ -87,7 +87,7 @@ VISTA-Curation 使用多模型、多 prompt 生成候选描述，再通过视觉
 
 当前证据更支持“共享体系和模型家族”，不支持三项业务必然运行完全相同的一份权重。
 
-## 7. Edge deployment analysis
+## 7. 端侧部署判断
 
 TLA 的理论复杂度降低不自动等于 NPU 更快。真实执行仍包含：
 
@@ -101,7 +101,7 @@ TLA 的理论复杂度降低不自动等于 NPU 更快。真实执行仍包含�
 
 若编译器不能把这些操作融合，或者标准 MHA 已有 SDPA/FlashAttention 快路径，TLA 可能产生更多 kernel、布局转换和中间内存写回。GPU TensorRT 结果不能直接外推到固定功能 NPU。
 
-### Required discriminating benchmark
+### 需要补做的区分性测试
 
 在目标芯片上比较等宽等深的三类 block：
 
@@ -147,7 +147,7 @@ hardware-specific student + task head
 
 共享资产应包括数据体系、teacher feature、backbone interface、蒸馏目标、量化配置和板端验证流程，而不是强迫所有任务和芯片复用同一个模型文件。
 
-## 9. Competing explanations
+## 9. 竞争解释
 
 1. **架构解释**：TLA 是高分辨率效率和精度的核心原因；
 2. **数据解释**：recaption、过滤、动态分辨率和训练规模贡献更大；
@@ -157,7 +157,7 @@ hardware-specific student + task head
 
 区分这些解释需要同数据同训练预算的架构消融、同输入分辨率的任务比较、完整 VLM/VLA 延迟，以及公开车端硬件结果。
 
-## 10. Current conclusion
+## 10. 当前结论
 
 TuringViT 当前最可信的价值是：它展示了高分辨率视觉编码器、数据治理和硬件协同设计如何被提升为物理 AI 的平台能力。它尚未证明：
 
@@ -177,13 +177,13 @@ data quality
 
 而不是从零复制一个缩小版 TuringViT。
 
-## 11. Sources
+## 11. 来源
 
 - Official project: https://turingvit.github.io/
 - Paper: https://arxiv.org/abs/2606.24253
 - XPENG public material: https://www.xpeng.com/pressroom/
 
-## 12. Watch items
+## 12. 待跟踪证据
 
 - 官方代码和权重；
 - 图灵芯片上的精度、延迟、内存和功耗；
