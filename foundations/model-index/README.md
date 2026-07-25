@@ -68,6 +68,8 @@
 
 完整 HRNet-based 关键点方案与 PFLD 可以做系统级比较，但不能由此直接推导其 backbone 或输出表征谁普遍更优。YOLO、TuringViT 和 CLIP image encoder 的压力测试及完整输入输出、精度、计算、内存、导出、量化和证据契约见 [comparison-axes.md](comparison-axes.md)。
 
+契约只规定“什么可以比较”。真正启动选型时，使用 [Backbone selection under task and deployment constraints](backbone-selection.md) 完成瓶颈归因、候选机制筛选、预训练归因、四级实验漏斗以及采用/撤销判断；不要从 family 名称或跨论文指标直接跳到采用结论。
+
 Classification 是与 detection、keypoint localization 等并列的任务；visual encoding 是模块角色或能力，不是同层任务。开放词汇分类/检测仍归任务能力，只有标注、筛选、难例分析和评测辅助等更大流程归 VLM system context。
 
 登记信息见 [registry.yaml](registry.yaml)；分面组织决策见 [Decision 0005](../../governance/decisions/0005-use-faceted-model-relations.md)。
