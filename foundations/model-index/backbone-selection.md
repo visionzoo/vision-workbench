@@ -88,7 +88,7 @@ ConvNeXt 或 plain ViT 只有在出现明确假设时加入，例如现有 CNN �
 - 小目标问题先检查目标像素、标签、P2/P3 接入和正样本分配；
 - 候选必须提供与 neck 对接的明确多尺度输出；
 - 若新增 projection、upsample 或 fusion，比较资格是 controlled-adaptation；
-- 完整 YOLO 与一个独立 backbone 不能直接排名。
+- [完整 YOLO family](families/yolo/README.md) 与一个独立 backbone 不能直接排名。
 
 ### 4.3 2D landmark / keypoint localization
 
