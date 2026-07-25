@@ -1,8 +1,8 @@
 ---
 title: Use orthogonal views for model knowledge
-status: proposed
+status: accepted
 date: 2026-07-25
-supersedes_if_accepted: 0004
+supersedes: 0004
 ---
 
 # Decision 0005: Use orthogonal views for model knowledge
@@ -19,7 +19,7 @@ A second review found that this correction was too strong in three places:
 
 This is the same class of failure that earlier caused “调研” to become a Research directory: one salient surface feature was promoted into the main classification axis before checking the underlying object and relations.
 
-## Proposed decision
+## Decision
 
 Use four orthogonal views instead of a single supposedly exhaustive taxonomy:
 
@@ -41,14 +41,14 @@ Specific consequences:
 
 ## Evidence boundary
 
-This proposal is based on the structure exposed by the current roadmap and registry, plus the user's real HRNet/PFLD and detection work. It has not yet been stress-tested against a large collection of model families. Acceptance should depend on whether it can represent the next real entries without duplicate ownership or forced classification.
+This decision is based on the structure exposed by the current roadmap and registry, plus the user's real HRNet/PFLD and detection work. The owner explicitly accepted the four-view structure before PR #7 was merged. Acceptance records the organization decision; it does not claim that the scheme has already been stress-tested against a large collection of model families. Future entries must still test whether it avoids duplicate ownership and forced classification.
 
-## Migration if accepted
+## Migration
 
 - Replace the three-section roadmap with the four views above.
 - Move detector DINO into the Detection/DETR task context while keeping it an independently built family.
 - Upgrade `registry.yaml` from a single `roles` axis to `object_type` plus `module_roles`.
-- Keep Decision 0004 as historical context; mark it superseded only after this decision is explicitly accepted.
+- Keep Decision 0004 as historical context and mark it superseded by this accepted decision.
 - Do not create module, task or application directories until real content makes a separate reading path necessary.
 
 ## Verification
