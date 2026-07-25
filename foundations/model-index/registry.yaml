@@ -1,17 +1,25 @@
-schema_version: 3
+schema_version: 4
 
-role_definitions:
-  task-model: "能直接输出检测、分类、关键点或分割等任务结果。"
-  backbone: "负责提取分层特征或视觉 token，供下游模块使用。"
-  neck: "负责转换或融合 backbone 的跨层、跨尺度特征。"
-  head: "负责把共享特征转换为分类、框、关键点或 mask 等任务输出。"
-  component: "不适合归入 backbone、neck、head，但可复用的结构、损失、分配方法或后处理。"
+object_type_definitions:
+  end-to-end-model-family: "能够以完整方案直接完成一个或多个视觉任务的可追溯模型谱系。"
+  reusable-architecture-family: "可在不同完整方案中承担一个或多个模块角色的可追溯架构谱系。"
+  reusable-component-family: "边界明确、可嵌入其他架构的组件谱系。"
+  learning-or-alignment-family: "主要由训练目标、预训练方法或跨模态对齐方式定义的可追溯谱系。"
+
+module_role_definitions:
+  backbone: "为任务网络提取分层特征。"
+  visual-encoder: "将图像或视频编码为可供下游消费的表示。"
+  neck: "在主要特征提取与任务输出之间转换或融合特征。"
+  adapter: "对齐分辨率、通道、模态或参数高效迁移接口。"
+  head: "将上游特征转换为局部任务输出。"
+  task-decoder: "通过 query、token 或迭代解码产生任务结果。"
 
 families:
   - id: yolo
     name: YOLO
     path: families/yolo
-    roles: [task-model]
+    object_type: end-to-end-model-family
+    module_roles: []
     primary_tasks: [object-detection]
     status: working
     evidence_status: partial
@@ -25,7 +33,8 @@ families:
   - id: turingvit
     name: TuringViT
     path: families/turingvit
-    roles: [backbone]
+    object_type: reusable-architecture-family
+    module_roles: [backbone, visual-encoder]
     primary_tasks: [visual-encoding]
     status: working
     evidence_status: partial
