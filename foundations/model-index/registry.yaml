@@ -1,0 +1,10 @@
+schema_version: 1
+families:
+  - id: yolo
+    name: YOLO
+    path: families/yolo
+    status: sample
+    evidence_status: partial
+    scope: "Major attributable real-time detector branches; not every project using the YOLO name."
+    authority_note: "No single organization owns or maintains the complete YOLO lineage."
+    next_gate: "Review directory granularity, source coverage, and update cost before adding another family."

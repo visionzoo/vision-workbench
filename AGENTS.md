@@ -4,7 +4,7 @@
 
 ## Before editing
 
-1. 阅读 `governance/scope.md`、`governance/ip-policy.md`、`governance/content-standard.md` 和 `governance/lifecycle.md`。
+1. 阅读 `governance/scope.md`、`governance/ip-policy.md`、`governance/content-standard.md`、`governance/lifecycle.md`、根目录 `CONTRIBUTING.md` 和目标一级目录的 `MAINTENANCE.md`。
 2. 明确本次目标、授权范围、目标文件和验收方式；不要顺带扩展目录或主题。
 3. 把对话、旧笔记、检索结果和 Agent 生成内容视为候选材料，而非已验证事实。
 4. 若内容可能来自公司任务、设备、代码、数据、模型或客户上下文，保持 `ip_review: pending`，不得公开或晋级。
@@ -36,5 +36,6 @@
 
 - 先做最小、相关修改；结构或治理规则发生实质变化时新增 decision record。
 - 不新增无内容目录、模型百科式条目或不可执行的大框架。
-- 修改后至少检查：元数据、相对链接、规则冲突、来源/证据边界、IP 状态、过度结论和公开触发条件。
+- 相关文件应组成少量、意图完整的提交；不得按文件或工具调用提交。提交信息必须准确说明修改内容，并遵循 `CONTRIBUTING.md`。
+- 修改后至少检查：元数据、相对链接、规则冲突、来源/证据边界、IP 状态、过度结论、目录维护规则和公开触发条件。
 - 只有检查结果与实际文件共同支持时才能声明完成；报告剩余的非原则性限制，不伪造“绝对无问题”。

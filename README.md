@@ -13,14 +13,19 @@
 
 ## Knowledge map
 
-| Area | Purpose |
-|---|---|
-| [Foundations](foundations/README.md) | 按机制与任务理解视觉算法，模型族作为辅助索引 |
-| [Engineering](engineering/README.md) | 结构化工程案例、诊断方法、部署与可重复流程 |
-| [Research](research/README.md) | 从真实问题形成假设、实验和有边界的结论 |
-| [Productization](productization/README.md) | 研究视觉技术如何形成产品、价值和交易 |
-| [Workspace](workspace/README.md) | 只暂存尚未分类的输入；可归类条目从创建起进入主题目录 |
-| [Projects](projects/registry.yaml) | 跟踪独立项目的孵化、验证与公开状态 |
+| Area | Purpose | Maintenance |
+|---|---|---|
+| [Foundations](foundations/README.md) | 按机制与任务理解视觉算法，模型族作为辅助索引 | [Rules](foundations/MAINTENANCE.md) |
+| [Engineering](engineering/README.md) | 结构化工程案例、诊断方法、部署与可重复流程 | [Rules](engineering/MAINTENANCE.md) |
+| [Research](research/README.md) | 从真实问题形成假设、实验和有边界的结论 | [Rules](research/MAINTENANCE.md) |
+| [Productization](productization/README.md) | 研究视觉技术如何形成产品、价值和交易 | [Rules](productization/MAINTENANCE.md) |
+| [Workspace](workspace/README.md) | 只暂存尚未分类的输入；可归类条目从创建起进入主题目录 | [Rules](workspace/MAINTENANCE.md) |
+| [Projects](projects/registry.yaml) | 跟踪独立项目的孵化、验证与公开状态 | [Rules](projects/MAINTENANCE.md) |
+| References | 管理跨条目复用的论文、仓库和数据集索引 | [Rules](references/MAINTENANCE.md) |
+| Governance | 管理仓库边界、质量、生命周期和决策 | [Rules](governance/MAINTENANCE.md) |
+| Templates | 提供最小、可删减的内容结构 | [Rules](templates/MAINTENANCE.md) |
+
+全局修改和提交规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## Initial focus
 
