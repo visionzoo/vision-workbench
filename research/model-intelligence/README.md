@@ -6,7 +6,7 @@ created: 2026-07-25
 updated: 2026-07-25
 confidence: medium
 provenance: public-source-research
- evidence_status: partial
+evidence_status: partial
 owner_review: pending
 ip_review: not-applicable
 tags: [visual-model-intelligence, vision-backbone, vlm, edge-ai, model-watch]
