@@ -64,7 +64,7 @@
 
 Classification 是与 detection、keypoint localization 等并列的任务；visual encoding 是模块角色或能力，不是同层任务。开放词汇分类/检测仍归任务能力，只有标注、筛选、难例分析和评测辅助等更大流程归 VLM system context。
 
-统一比较口径见 [comparison-axes.md](comparison-axes.md)，登记信息见 [registry.yaml](registry.yaml)；分面组织决策见 [Decision 0005](../../governance/decisions/0005-use-orthogonal-model-views.md)。
+统一比较口径见 [comparison-axes.md](comparison-axes.md)，登记信息见 [registry.yaml](registry.yaml)；分面组织决策见 [Decision 0005](../../governance/decisions/0005-use-faceted-model-relations.md)。
 
 当前条目：
 
