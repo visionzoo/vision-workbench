@@ -28,6 +28,8 @@ Backbone 与 visual encoder、head 与 task decoder 只作为相邻角色的关�
 
 ### 1. 将 ProjectCollection 中仍有价值的内容融入 vision-workbench
 
+- **来源**：[visionzoo/projectcollection](https://github.com/visionzoo/projectcollection)。
+- **目标仓库**：[visionzoo/vision-workbench](https://github.com/visionzoo/vision-workbench)。
 - **边界**：不整体复制旧仓；归档、删除或公开属于另行确认的动作。
 - **关闭条件**：所有入选对象已逐项迁移或明确放弃，旧仓处置经过本人确认。
 
