@@ -14,13 +14,13 @@
 
 ## Active work
 
-### 2A. Backbone / visual encoder 比较契约与最小索引
+### 2B. 面向任务与部署约束的 Backbone 选型
 
-- **来源方向**：Visual feature extraction。
-- **交付物**：定义 backbone 与 visual encoder 的角色差异，以及输入输出、尺度、预训练来源、精度、计算、内存、导出和量化的比较口径；建立最小关系索引。
-- **边界**：不把二者写成同义词，不把完整模型强拆成三段，不批量创建 ResNet、MobileNet、EfficientNet、ConvNeXt、ViT、Swin、HRNet 等 family 页面。
-- **验收出口**：比较资格和证据要求明确；能表示当前 YOLO、TuringViT 及至少一个结构不同的反例；没有跨论文裸指标排名、重复事实或预设目录。
-- **状态**：比较契约、最小关系索引和三对象压力测试已在独立 Draft PR 实现；合并前保持 Active，等待本人验收。
+- **来源方向**：Visual feature extraction；前置 2A 比较契约已合并。
+- **交付物**：把比较契约落实为可执行的选型经验：先判断瓶颈是否来自 backbone，再按任务表征、输出层级、预训练、目标 runtime、量化和维护成本筛选候选；建立分阶段实验与采用/撤销门。
+- **边界**：不建立跨论文排行榜，不把 ResNet、MobileNet、EfficientNet、ConvNeXt、ViT、Swin、HRNet 批量扩成 family 页面，不把用户任务中的标签、ROI、head、坐标链或转换问题偷换成架构问题。
+- **验收出口**：能直接指导 ROI 分类、局部关键点和轻量检测三类实验；架构收益与预训练收益分开；训练前先做接口/算子可行性；最终采用由同协议任务结果与目标硬件 INT8 结果共同决定。
+- **状态**：实质条目已在独立分支实现，等待本人验收。
 
 ## Accumulation candidates
 
@@ -28,7 +28,7 @@
 
 | 候选方向 | 启动信号 | 当前边界 |
 |---|---|---|
-| **2. Visual feature extraction** | 需要在具体任务和硬件约束下选择或替换 backbone / visual encoder | 当前只激活 2A；具体模型家族按需建设 |
+| **2. Visual feature extraction** | 需要在具体任务和硬件约束下选择或替换 backbone / visual encoder | 当前只激活 2B；具体模型家族按需建设 |
 | **Classification** | 出现图像、ROI 或帧状态分类的复用需求 | 区分闭集与开放词汇、单帧状态与时序事件；眼睛开闭等真实经验可进入 |
 | **Neck / feature fusion** | 多尺度或多层融合成为可区分变量 | 只维护中间特征转换与融合；不建立统一 Adapter 父项 |
 | **Task output representation** | 任务误差需要反推 head、decoder、loss、matcher 或解码选择 | 输出链路相邻不等于同一对象；任务特有事实回到具体任务 |
