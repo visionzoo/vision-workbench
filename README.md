@@ -11,19 +11,26 @@
 - **Independent repositories**：可运行且有公开可能的代码应尽早独立建为私有仓库，完成验证后再公开。
 - **vision-portfolio**：仅当成熟公共项目达到 **3 个及以上**，且 Profile README 已不足以清晰组织成果时创建；只承担成果索引，不复制母库内容。
 
-## Knowledge map
+## Knowledge areas
 
 | Area | Purpose | Maintenance |
 |---|---|---|
-| [Foundations](foundations/README.md) | 按机制与任务理解视觉算法，模型族作为辅助索引 | [Rules](foundations/MAINTENANCE.md) |
+| [Foundations](foundations/README.md) | 按机制与任务理解视觉算法，模型族作为关系索引 | [Rules](foundations/MAINTENANCE.md) |
 | [Engineering](engineering/README.md) | 结构化工程案例、诊断方法、部署与可重复流程 | [Rules](engineering/MAINTENANCE.md) |
 | [Research](research/README.md) | 从真实问题形成可证伪假设、实验和有边界的结论 | [Rules](research/MAINTENANCE.md) |
 | [Productization](productization/README.md) | 研究视觉技术如何形成产品、价值和交易 | [Rules](productization/MAINTENANCE.md) |
-| [Workspace](workspace/README.md) | 只暂存尚未分类的输入；可归类条目从创建起进入主题目录 | [Rules](workspace/MAINTENANCE.md) |
-| [Projects](projects/registry.yaml) | 跟踪独立项目的孵化、验证与公开状态 | [Rules](projects/MAINTENANCE.md) |
-| References | 管理跨条目复用的论文、仓库和数据集索引 | [Rules](references/MAINTENANCE.md) |
-| Governance | 管理仓库边界、质量、生命周期和决策 | [Rules](governance/MAINTENANCE.md) |
-| Templates | 提供最小、可删减的内容结构 | [Rules](templates/MAINTENANCE.md) |
+
+目录决定知识的权威归属；一个事实只在一个条目维护，跨任务、模型、工程案例和研究证据的关系通过链接与元数据表达。
+
+## Repository support
+
+| Area | Purpose | Maintenance |
+|---|---|---|
+| [Workspace](workspace/README.md) | 暂存尚未分类的输入；可归类条目从创建起进入主题目录 | [Rules](workspace/MAINTENANCE.md) |
+| [Projects](projects/registry.yaml) | 跟踪独立项目的孵化、验证与公开状态，不复制代码 | [Rules](projects/MAINTENANCE.md) |
+| References | 管理确实被多个条目复用的论文、仓库和数据集索引 | [Rules](references/MAINTENANCE.md) |
+| Governance | 管理仓库边界、质量、生命周期和结构决策 | [Rules](governance/MAINTENANCE.md) |
+| Templates | 提供经过真实重复需求验证的最小内容结构 | [Rules](templates/MAINTENANCE.md) |
 
 全局修改和提交规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
@@ -37,7 +44,7 @@
 
 ## TODO
 
-仓库级待办统一维护在 [TODO.md](TODO.md)。
+仓库级积累方向与当前工作统一维护在 [TODO.md](TODO.md)。TODO 决定下一步做什么，不承担知识分类职责。
 
 ## Working rule
 
@@ -46,7 +53,7 @@ unclassified inbox → domain path / working → validated → canonical
                                              └→ independent private repo → public
 ```
 
-文件位置表达主题，元数据表达知识状态；晋级不通过移动或复制文件完成。正式内容必须保留问题、证据边界、竞争解释、区分性行动、当前结论、适用边界和未解决问题。详细规则见 [governance](governance/README.md)，Agent 修改约束见 [AGENTS.md](AGENTS.md)。
+文件位置表达主题，元数据表达知识状态与关系；晋级不通过移动或复制文件完成。正式内容必须保留问题、证据边界、竞争解释、区分性行动、当前结论、适用边界和未解决问题。详细规则见 [governance](governance/README.md)，Agent 修改约束见 [AGENTS.md](AGENTS.md)。
 
 ## Language
 
