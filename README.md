@@ -35,6 +35,10 @@
 4. [DMS eye visibility and localization reliability](research/questions/dms-eye-visibility-and-localization-reliability.md)：研究问题草稿，尚未独立验证。
 5. [Visual model intelligence](research/model-intelligence/README.md)：从 TuringViT 开始，持续判断新视觉底座的机制、证据边界、端侧价值与可迁移方法。
 
+## TODO
+
+仓库级待办统一维护在 [TODO.md](TODO.md)。
+
 ## Working rule
 
 ```text
