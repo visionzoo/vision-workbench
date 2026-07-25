@@ -1,7 +1,8 @@
 ---
 title: Organize reusable architecture knowledge by module role
-status: accepted
+status: superseded
 date: 2026-07-25
+superseded_by: 0005
 ---
 
 # Decision 0004: Organize reusable architecture knowledge by module role
