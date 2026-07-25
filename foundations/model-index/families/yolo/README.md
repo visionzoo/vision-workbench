@@ -31,9 +31,12 @@ YOLO 是实时目标检测模型家族，但不是一条由单一组织连续维
 
 ## 在 Foundations 里的位置
 
-- 角色：`task-model`
+- 对象身份：`model-family`
+- 使用范围：`complete-solution`
+- 模块角色：family 层级不预设；只有选定具体分支、实现和输出节点后，才判断其中的 backbone、neck、head 或 task decoder
 - 主要任务：[目标检测](../../../tasks/object-detection.md)
 - 核心机制：[多尺度、标签分配、检测头、结果选择](../../../mechanisms/object-detection-core.md)
+- 比较契约：[Backbone / visual encoder comparison contract](../../comparison-axes.md)
 - 真实工程案例：[海思 INT8 局部目标](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)、[RV1126B RKNN INT8 对齐](../../../../engineering/cases/yolo11-rv1126b-rknn-int8-alignment.md)
 
 ## 本人经验

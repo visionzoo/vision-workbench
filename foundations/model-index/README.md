@@ -48,23 +48,29 @@
 
 | Module role | 含义 | 例子 |
 |---|---|---|
-| `backbone` | 为任务网络提取分层特征 | ResNet、HRNet |
-| `visual-encoder` | 将图像或视频编码为可供下游消费的表示 | ViT、TuringViT、CLIP image encoder |
+| `backbone` | 在任务网络中提取供 neck、head 或 decoder 消费的特征 | ResNet、HRNet |
+| `visual-encoder` | 将图像或视频编码为可供视觉任务、检索、多模态或决策模块消费的表示 | ViT、TuringViT、CLIP image encoder |
 | `neck` | 位于主要特征提取与任务输出之间的特征转换或融合模块 | FPN、PAN、BiFPN |
 | `head` | 将上游特征转换为局部任务输出 | YOLO detection head、heatmap keypoint head |
 | `task-decoder` | 通过 query、token 或迭代解码产生任务结果 | DETR decoder、mask decoder |
 
-`backbone` 与 `visual-encoder`、`head` 与 `task-decoder` 是相邻但不等同的角色。loss、matcher、标签分配和后处理只建立关系，不因位于输出链路就自动归为 head。
+`backbone` 与 `visual-encoder`、`head` 与 `task-decoder` 是相邻但不等同的角色。同一实现只有在具体组合与接口支持时才能同时登记为 backbone 和 visual encoder；能提取中间激活不等于已经满足下游消费契约。loss、matcher、标签分配和后处理只建立关系，不因位于输出链路就自动归为 head。
 
 本索引不定义统一的 `adapter` 角色：分辨率/通道投影属于具体接口组件，跨模态 projector 属于多模态架构关系，PEFT adapter 属于学习方法。共享词名不能替代对象身份。
 
 ## 比较边界
 
-只有比较层级、对象身份或使用范围、模块角色、任务和评测条件都匹配时，两个对象才适合直接比较。完整 HRNet-based 关键点方案与 PFLD 可以做系统级比较，但不能由此直接推导其 backbone 或输出表征谁普遍更优。
+先判定比较层级和资格：
+
+- `direct`：角色、输入输出、消费者、任务与协议匹配，主要非目标变量固定；
+- `controlled-adaptation`：需要节点选择、投影、上采样、pooling 或 fusion，结论属于“候选模块＋适配”的系统；
+- `relation-only`：层级或接口不匹配、来源条件不可分，或代码/权重/评测证据缺失，只记录关系与区分性实验，不排名。
+
+完整 HRNet-based 关键点方案与 PFLD 可以做系统级比较，但不能由此直接推导其 backbone 或输出表征谁普遍更优。YOLO、TuringViT 和 CLIP image encoder 的压力测试及完整输入输出、精度、计算、内存、导出、量化和证据契约见 [comparison-axes.md](comparison-axes.md)。
 
 Classification 是与 detection、keypoint localization 等并列的任务；visual encoding 是模块角色或能力，不是同层任务。开放词汇分类/检测仍归任务能力，只有标注、筛选、难例分析和评测辅助等更大流程归 VLM system context。
 
-统一比较口径见 [comparison-axes.md](comparison-axes.md)，登记信息见 [registry.yaml](registry.yaml)；分面组织决策见 [Decision 0005](../../governance/decisions/0005-use-faceted-model-relations.md)。
+登记信息见 [registry.yaml](registry.yaml)；分面组织决策见 [Decision 0005](../../governance/decisions/0005-use-faceted-model-relations.md)。
 
 当前条目：
 

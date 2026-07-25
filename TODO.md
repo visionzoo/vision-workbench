@@ -20,7 +20,7 @@
 - **交付物**：定义 backbone 与 visual encoder 的角色差异，以及输入输出、尺度、预训练来源、精度、计算、内存、导出和量化的比较口径；建立最小关系索引。
 - **边界**：不把二者写成同义词，不把完整模型强拆成三段，不批量创建 ResNet、MobileNet、EfficientNet、ConvNeXt、ViT、Swin、HRNet 等 family 页面。
 - **验收出口**：比较资格和证据要求明确；能表示当前 YOLO、TuringViT 及至少一个结构不同的反例；没有跨论文裸指标排名、重复事实或预设目录。
-- **状态**：结构基线验收后，在独立分支开始内容建设。
+- **状态**：比较契约、最小关系索引和三对象压力测试已在独立 Draft PR 实现；合并前保持 Active，等待本人验收。
 
 ## Accumulation candidates
 
