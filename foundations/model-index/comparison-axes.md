@@ -29,4 +29,4 @@
 | 许可 | 代码、权重和数据分别检查 |
 | 证据 | 第一方报告、第三方复现或本人实验 |
 
-缺项写 \`not disclosed\` 或 \`not measured\`。不同论文里的 AP、FPS 和 FLOPs 不能因为列名一样就直接排序。
+缺项写 `not disclosed` 或 `not measured`。不同论文里的 AP、FPS 和 FLOPs 不能因为列名一样就直接排序。
