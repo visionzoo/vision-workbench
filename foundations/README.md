@@ -6,7 +6,7 @@
 - `tasks/`：任务输入、输出、指标和常见误差；
 - `model-index/`：某个模型族怎么选、怎么查官方资料、怎么落到工程上。
 
-当前已用 [YOLO](model-index/families/yolo/README.md) 把这三层跑通，并完成样板验收。后续模型族按实际需要逐个建设，不批量铺目录。
+当前已用 [YOLO](model-index/families/yolo/README.md) 把这三层跑通，并完成样板验收。[TuringViT](model-index/families/turingvit/README.md) 作为视觉编码器与 backbone 直接进入同一模型索引，不再因为资料来自“调研”而另建知识域。后续模型族按实际需要逐个建设，不批量铺目录。
 
 ## 怎么使用
 
