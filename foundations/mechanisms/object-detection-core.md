@@ -4,7 +4,7 @@ type: mechanism
 rigor: standard
 provenance: yolo-official-sources-and-owner-practice
 evidence_status: partial
-owner_review: accepted
+owner_review: pending
 ip_review: not-applicable
 confidence: medium
 created: 2026-07-25
@@ -48,4 +48,4 @@ updated: 2026-07-25
 板端不一致 → 查输出语义、导出图和后处理位置
 ```
 
-对应模型样板：[YOLO architecture](../model-index/families/yolo/architecture.md)。
+对应模型样板：[YOLO architecture](../model-index/families/yolo/architecture.md)。当前内容尚未完成人工技术验收。

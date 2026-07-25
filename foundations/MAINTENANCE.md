@@ -38,4 +38,18 @@
 4. 哪些内容重复，哪些页面没有实际用途；
 5. 本人是否确认内容和维护成本可以接受。
 
-YOLO 已完成这一步并通过本人验收。后续模型族仍需按实际需要单独开始，不因样板通过就批量建立。
+YOLO 的目录分工和维护方式已经通过本人验收；技术内容仍按 `working / partial` 继续补证据。
+
+## YOLO 查询检查
+
+不用统计文件数量，直接回答下面五个问题。找不到、找得慢或答案没有证据，都说明样板还要改。
+
+1. 闭集轻量检测当前先看哪个分支，为什么？
+2. YOLO-World 原版和 Ultralytics 迁移版能否混用权重和指标？
+3. YOLO26 的默认输出与传统 YOLO 输出有什么区别？
+4. RV1126B 上使用 YOLO11 INT8，哪些是厂商已支持，哪些仍要本人验证？
+5. INT8 板端少检时，为什么降低阈值只能用于定位问题，不能直接算修复？
+
+对应答案应能从 [YOLO](model-index/families/yolo/README.md)、[生态实现](model-index/families/yolo/ecosystem-implementations.md)、[评测](model-index/families/yolo/evaluation.md)、[部署](model-index/families/yolo/deployment.md)和工程案例中找到。
+
+后续模型族仍需按实际需要单独开始，不因样板通过就批量建立。

@@ -4,7 +4,7 @@ type: task
 rigor: standard
 provenance: standard-task-definition-and-owner-practice
 evidence_status: partial
-owner_review: accepted
+owner_review: pending
 ip_review: not-applicable
 confidence: medium
 created: 2026-07-25
@@ -53,4 +53,4 @@ box + class + confidence
 - 核心机制：[目标检测的四个核心机制](../mechanisms/object-detection-core.md)
 - 工程诊断：[模型量化与精度对齐](../../engineering/diagnostics/model-quantization-accuracy-alignment.md)
 
-这页只保存任务共性。某个 YOLO 版本的结构放在模型族，真实项目结果放在工程或实验记录。
+这页只保存任务共性。某个 YOLO 版本的结构放在模型族，真实项目结果放在工程或实验记录。当前内容尚未完成人工技术验收。
