@@ -1,61 +1,76 @@
 ---
-title: Use orthogonal views for model knowledge
+title: Use faceted relations for model knowledge
 status: accepted
 date: 2026-07-25
 supersedes: 0004
 ---
 
-# Decision 0005: Use orthogonal views for model knowledge
+# Decision 0005: Use faceted relations for model knowledge
 
 ## Context
 
-Decision 0004 corrected a real asymmetry: MobileNet and ViT had been promoted because their names appeared in the conversation, while ResNet、EfficientNet、ConvNeXt and HRNet were treated as secondary baselines. It introduced `backbone / neck / head` as first-class module roles and prevented the roadmap from becoming a flat model list.
+Decision 0004 corrected a real asymmetry: a few named models had been promoted while other relevant families were treated as secondary baselines. It introduced `backbone / neck / head` as first-class module roles and prevented the roadmap from becoming a flat model list.
 
-A second review found that this correction was too strong in three places:
+Further review found that module roles still could not serve as a general model taxonomy:
 
-1. `backbone / neck / head` is a useful component view, but not every CNN、Transformer、DETR、encoder-decoder or end-to-end model can be unambiguously decomposed this way;
-2. the roadmap grouped Meta self-supervised DINO and detector DINO because they share a name, even though one is a representation-learning lineage and the other is a DETR detection lineage;
-3. the registry used one `roles` field to mix whole-model scope with module roles, while the roadmap mixed learning paradigms, tasks and system applications at the same level.
+1. not every CNN, Transformer, DETR, encoder-decoder or end-to-end model can be unambiguously decomposed into `backbone / neck / head`;
+2. names do not determine identity: Meta self-supervised DINO and detector DINO belong to different lineages;
+3. object identity, usage scope, module role, learning paradigm, task and system context answer different questions;
+4. a fixed four-view roadmap mixed knowledge classification with execution planning and turned possible future coverage into premature work commitments;
+5. `adapter` grouped interface projection, multimodal connectors and parameter-efficient fine-tuning only because they share a word.
 
 This is the same class of failure that earlier caused “调研” to become a Research directory: one salient surface feature was promoted into the main classification axis before checking the underlying object and relations.
 
 ## Decision
 
-Use four orthogonal views instead of a single supposedly exhaustive taxonomy:
+Use faceted relations instead of a single supposedly exhaustive taxonomy or a fixed set of mandatory directory trees.
 
-1. **Architecture modules**：backbone / visual encoder、neck / feature fusion / adapter、head / task decoder；
-2. **Learning and alignment paradigms**：supervised or self-supervised representation learning、visual-language alignment；
-3. **Tasks and complete solutions**：detection、keypoint/pose、segmentation、tracking and temporal solutions；
-4. **System applications**：VLM and VLA uses that place visual capabilities inside a larger workflow or closed loop.
+The model index may describe an object through these independent fields:
 
-These views are indexes and relationship dimensions, not four mandatory directory trees. An object may appear in several views, but facts have one canonical owner and other views link to it.
+1. **Entity kind**：what the canonical object is, such as a model family, architecture family, component family or method family;
+2. **Usage scopes**：whether it is used as a complete solution, reusable module or pretraining source;
+3. **Module roles**：what responsibility it takes in a concrete system, such as backbone, visual encoder, neck, head or task decoder;
+4. **Learning paradigms**：how representations or task behavior are learned or aligned;
+5. **Tasks**：what visual problem the complete system solves, including classification, detection, keypoint localization, segmentation and tracking;
+6. **System contexts**：how the visual capability is used in a larger workflow or closed loop;
+7. **Relations**：typed links to parent lineages, components, pretraining sources, tasks, cases and competing alternatives.
+
+These fields are relationship dimensions, not a promise that every entry must populate every field. Facts have one canonical owner; other views link to that owner. Directories continue to follow long-term knowledge purpose, while metadata expresses cross-cutting relationships and `TODO.md` controls work activation.
 
 Specific consequences:
 
-- Meta DINO is maintained under self-supervised representation learning.
-- Detector DINO is maintained under Detection → DETR as its own family; separate construction does not mean a duplicate top-level category.
-- `backbone / neck / head` remain important module roles, expanded where needed with `visual-encoder`、`adapter` and `task-decoder`, but they do not define every network's ontology.
-- The registry separates `object_type` from `module_roles`. Tasks、learning paradigms and system applications remain independent relations rather than values squeezed into either field.
-- HRNet's high-resolution architecture is maintained through the architecture/module view; HRNet-based heatmap versus PFLD is maintained as a keypoint task and system-level experiment.
-- No empty directories are created merely to mirror the four views.
+- Meta DINO is represented through self-supervised learning relations; detector DINO is maintained in the Detection / DETR lineage.
+- `backbone / visual-encoder` and `head / task-decoder` remain distinct but adjacent module roles; they are not synonyms or universal decomposition rules.
+- There is no generic `adapter` module role or roadmap parent. Interface projections are components, multimodal projectors are multimodal architecture relations, and PEFT adapters are learning methods.
+- Classification is a task relation independent of backbone or head, and includes real image/ROI/state classification work.
+- Visual encoding is a module role or capability, not a task at the same level as classification or detection.
+- Open-vocabulary classification and detection are task capabilities; VLM-assisted annotation, filtering, hard-case analysis and evaluation are system workflows.
+- Temporal recognition/localization is separated from engineering decision logic such as smoothing, state machines, alarm triggering and recovery.
+- No empty directories or family pages are created merely to mirror the facets.
 
 ## Evidence boundary
 
-This decision is based on the structure exposed by the current roadmap and registry, plus the user's real HRNet/PFLD and detection work. The owner explicitly accepted the four-view structure before PR #7 was merged. Acceptance records the organization decision; it does not claim that the scheme has already been stress-tested against a large collection of model families. Future entries must still test whether it avoids duplicate ownership and forced classification.
+This decision is based on repeated pressure tests against the current roadmap, registry, YOLO and TuringViT entries, the user's real classification, detection and eye-keypoint work, and counterexamples from representation learning, DETR, video and multimodal systems. Acceptance records the repository-organization decision; it does not claim that the vocabulary is complete.
+
+New real entries may add or refine values when existing facets cannot represent them without forced classification. They must not create a new directory tree or parent category merely to make the taxonomy look complete.
 
 ## Migration
 
-- Replace the three-section roadmap with the four views above.
-- Move detector DINO into the Detection/DETR task context while keeping it an independently built family.
-- Upgrade `registry.yaml` from a single `roles` axis to `object_type` plus `module_roles`.
-- Keep Decision 0004 as historical context and mark it superseded by this accepted decision.
-- Do not create module, task or application directories until real content makes a separate reading path necessary.
+- Keep Decision 0004 as historical context and mark it superseded by this decision.
+- Replace `object_type` with `entity_kind` and separate identity from `usage_scopes`.
+- Remove generic `adapter` from `module_roles`.
+- Rename `primary_tasks` to `tasks`; remove `visual-encoding` from TuringViT tasks.
+- Add empty relation fields only where they are part of the registry contract, not as speculative content.
+- Reframe `TODO.md` as active work, accumulation candidates and repository maintenance; only activated work is decomposed.
+- Split the root README into knowledge areas and repository support.
 
 ## Verification
 
-- Every pending item has a clear primary view and explicit cross-links where needed.
-- Meta DINO and detector DINO no longer sit together because of their shared name.
-- Detection family、keypoint task、video task and segmentation are not mixed with VLM/VLA system applications.
-- Registry entries distinguish what the object is from what role it plays.
-- A complete-model comparison cannot be mistaken for evidence about a single backbone or head.
-- No empty directories or duplicate registries are introduced.
+- A model family, architecture family, component family and method family can be distinguished from how each is used.
+- Meta DINO and detector DINO cannot become adjacent merely because of a shared name.
+- Interface projection, multimodal projector and PEFT adapter do not share a false canonical parent.
+- Classification can be represented without pretending that a backbone or head is itself the task.
+- TuringViT can be a visual encoder without declaring `visual-encoding` as a task.
+- Temporal model knowledge and product alarm logic have different canonical homes.
+- The TODO can preserve open accumulation directions without converting all candidates into work commitments.
+- No empty directory, duplicate fact owner or second knowledge map is introduced.
