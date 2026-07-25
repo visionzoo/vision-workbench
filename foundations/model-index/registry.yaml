@@ -1,9 +1,11 @@
-schema_version: 2
+schema_version: 3
 
 role_definitions:
-  task-model: "能直接输出检测、分类等任务结果。"
-  backbone: "负责提取特征或视觉 token，需要接任务头、LLM 或 policy。"
-  component: "可复用的结构、损失、分配方法或后处理。"
+  task-model: "能直接输出检测、分类、关键点或分割等任务结果。"
+  backbone: "负责提取分层特征或视觉 token，供下游模块使用。"
+  neck: "负责转换或融合 backbone 的跨层、跨尺度特征。"
+  head: "负责把共享特征转换为分类、框、关键点或 mask 等任务输出。"
+  component: "不适合归入 backbone、neck、head，但可复用的结构、损失、分配方法或后处理。"
 
 families:
   - id: yolo
