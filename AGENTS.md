@@ -2,6 +2,11 @@
 
 本文件是 Agent 修改 `vision-workbench` 的最小操作契约。它约束状态提交与外部动作，不要求简单任务执行重型流程。
 
+## Domain stance
+
+- 本仓库始终以视觉算法经验为内容边界；解决视觉问题时保持开放积累，主动比较更广泛的机制、反例和方法，并提炼可迁移的问题表征、证据判断、决策与验证能力，以降低未来进入新领域的学习成本。
+- “可迁移”是 Agent 的工作方式，不是扩张仓库范围的理由。不得因此写入与视觉无直接关系的领域知识、建立跨领域分类树、通用方法论专区或预设主题目录；真正进入新领域时，应在独立载体中复用这些工作原则。
+
 ## Before editing
 
 1. 阅读 `governance/scope.md`、`governance/ip-policy.md`、`governance/content-standard.md`、`governance/lifecycle.md`、根目录 `CONTRIBUTING.md` 和目标一级目录的 `MAINTENANCE.md`。
