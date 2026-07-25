@@ -1,8 +1,8 @@
 # Deployment
 
-## Deployment contract
+YOLO 能导出，不等于已经形成可用的板端模型。部署时要锁定的是完整契约，不是文件名。
 
-模型文件名不是部署契约。每次导出必须冻结：
+## 必须保存
 
 ```yaml
 source_repository:
@@ -23,27 +23,29 @@ calibration_dataset:
 acceptance_oracle:
 ```
 
-## ONNX and runtime export
+## 导出
 
-- 先确认输出是原始 head、已 decode 预测，还是包含 NMS 的端到端结果。
-- 固定/动态 shape、batch、opset 和 simplify/fuse 会改变可支持算子与输出图。
-- Ultralytics 的 export/benchmark 文档只保证其标明的模型、包版本和格式能力；其他作者分支需用各自导出脚本。
-- 第三方转换脚本属于补充证据，不能被标记成原模型“官方嵌入式支持”。
+- 先确认输出是原始 head、已 decode 结果，还是已经包含最终选择；
+- 固定/动态 shape、batch、opset、simplify 和 fuse 都可能改变图；
+- 不同 YOLO 分支优先使用各自仓库的导出方式；
+- 第三方转换脚本只能证明该脚本支持的版本，不能倒推成模型原作者承诺。
 
-## Quantization
+## 量化
 
-- PTQ 需使用覆盖真实输入分布的 calibration set，并保存采样清单与预处理。
-- 量化后至少比较输入、关键输出张量和任务级指标；单看转换器 cosine similarity 不足以验收检测结果。
-- decode、sigmoid/softmax、DFL、NMS 或端到端选择算子的放置会影响 NPU 支持和精度。
-- per-tensor/per-channel、对称/非对称、混合精度与排除节点必须绑定具体工具链版本。
+- 校准集要覆盖真实输入分布，并保存图片清单和预处理；
+- 至少比较原框架、导出模型和板端模型的任务级结果；
+- 必要时再比较关键输出张量，不能只看转换器给出的相似度；
+- DFL、decode、激活、NMS 或端到端选择放在哪里，会直接影响 NPU 支持和精度。
 
-## Embedded and NPU checks
+## 板端
 
-- 芯片厂商支持的是算子、图模式和 runtime 版本，不是抽象的“支持 YOLO”。
-- 核对 resize/letterbox、RGB/BGR、NV12 色域和 full/limited range、mean/std、stride 对齐及内存布局。
-- 延迟至少分开模型执行与端到端链路；同时记录峰值内存、功耗/频率条件和热稳定性。
-- 真实 RKNN、TensorRT、OpenVINO、CoreML、TFLite、NCNN 等记录进入 `engineering/deployment/` 或 case；此页只维护共同检查表。
+- 芯片支持的是具体算子、图和 runtime 版本，不是抽象的“支持 YOLO”；
+- 重点核对 resize/letterbox、RGB/BGR、NV12 色域与 full/limited range、mean/std、内存布局；
+- 延迟分成模型执行和完整链路，同时记录内存、频率和连续运行条件；
+- 代码、权重、数据和依赖许可分别检查。
 
-## Licensing
+## 本人经验与工程回链
 
-部署前分别核查代码、权重、数据和依赖许可。不同 YOLO 分支许可不同；技术可导出不等于可在目标产品中合法分发。
+已确认有 YOLO 训练、导出和部署的实际经验；具体模型、芯片、数据和指标只有在能提供独立材料时才进入工程记录。
+
+现有相关条目：[模型量化与精度对齐](../../../../engineering/diagnostics/model-quantization-accuracy-alignment.md)。该条目目前仍是未验证的问题草稿，链接只表示问题相关，不表示 RKNN 流程已经完成或结论已经成立。

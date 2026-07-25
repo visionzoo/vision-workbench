@@ -1,10 +1,19 @@
-schema_version: 1
+schema_version: 2
+
+role_definitions:
+  task-model: "能直接输出检测、分类等任务结果。"
+  backbone: "负责提取特征，需要接任务头。"
+  component: "可复用的结构、损失、分配方法或后处理。"
+
 families:
   - id: yolo
     name: YOLO
     path: families/yolo
-    status: sample
+    roles: [task-model]
+    primary_tasks: [object-detection]
+    status: sample-accepted
     evidence_status: partial
-    scope: "Major attributable real-time detector branches; not every project using the YOLO name."
-    authority_note: "No single organization owns or maintains the complete YOLO lineage."
-    next_gate: "Review directory granularity, source coverage, and update cost before adding another family."
+    owner_use: confirmed
+    scope: "主要、可追溯的实时检测分支，不穷举所有带 YOLO 名称的项目。"
+    authority_note: "YOLOv3 之后没有覆盖全部分支的单一维护组织。"
+    next_gate: "按实际需要单独确认并建设下一个模型族，不批量复制 YOLO 目录。"

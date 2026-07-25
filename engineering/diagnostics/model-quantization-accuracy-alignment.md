@@ -11,7 +11,7 @@ evidence_status: unverified
 owner_review: pending
 ip_review: pending
 tags: [onnx, rknn, int8, accuracy, deployment]
-related: []
+related: [foundations/model-index/families/yolo/deployment.md]
 ---
 
 # Model quantization and accuracy alignment
@@ -53,6 +53,10 @@ model_commit_or_hash:
 preprocess_contract:
 postprocess_contract:
 ```
+
+## Foundation link
+
+模型级部署检查见 [YOLO deployment](../../foundations/model-index/families/yolo/deployment.md)。该页保存通用检查项；本页只在取得真实工具链和原始证据后记录具体诊断。
 
 ## Current conclusion
 

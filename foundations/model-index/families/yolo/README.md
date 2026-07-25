@@ -2,51 +2,61 @@
 status: working
 type: model-index
 rigor: standard
-provenance: official-papers-repositories-and-documentation
+provenance: official-papers-repositories-documentation-and-owner-use
 evidence_status: partial
-owner_review: pending
+owner_review: accepted
 ip_review: not-applicable
 confidence: medium
 created: 2026-07-25
 updated: 2026-07-25
 ---
 
-# YOLO family
+# YOLO
 
-YOLO 是以单阶段、实时目标检测为起点形成的模型家族名称，但它不是由单一组织连续维护的线性产品。原始 YOLOv1–v3 之后，编号分支、命名分支、开放词汇分支和生态实现由不同作者或组织维护，代码、许可和版本语义并不统一。
+YOLO 是实时目标检测模型家族，但不是一条由单一组织连续维护的版本线。YOLOv3 之后，不同编号和命名分支来自不同作者或组织，代码、许可和版本含义也不同。
 
-## Scope
+## 在 Foundations 里的位置
 
-本条目覆盖主要且能追溯到论文作者、发布组织或长期维护仓库的分支，用于理解结构、训练、评价和部署差异。不以“名称包含 YOLO”为唯一收录条件，也不把框架支持、第三方移植或汇总文章当作模型原始官方来源。
+- 角色：`task-model`
+- 主要任务：[目标检测](../../../tasks/object-detection.md)
+- 核心机制：[多尺度、标签分配、检测头、结果选择](../../../mechanisms/object-detection-core.md)
+- 真实工程记录：见 [Deployment](deployment.md) 中的回链
 
-## Identity classes
+## 本人经验
 
-- **原始作者谱系**：YOLOv1、YOLOv2/YOLO9000、YOLOv3；
-- **可归属的正式分支**：由相应论文作者或维护组织正式发布，但不冒充原始作者的顺序续作；
-- **生态改造/复现**：由第三方框架、芯片厂商或社区维护者移植、重实现或面向特定硬件改造，必须与模型原始实现分开评价。
+已确认有 YOLO 训练、导出和部署的实际使用经验。因此本条目可以记录“本人经验”，但不在没有独立材料的情况下写具体项目、设备和指标。官方资料仍只表示第一方定义或报告，不能用本人使用经验替代来源。
 
-本文中的“官方”始终是相对概念：只表示该资料由对应模型的作者或维护组织发布，不表示整个 YOLO 家族存在统一官方。
+## 各页面分工
 
-## Views
+| 页面 | 只负责什么 |
+|---|---|
+| [Variants](variants.md) | 版本归属、维护方和主来源；这是谱系的唯一维护位置 |
+| [Architecture](architecture.md) | 结构和机制发生了什么变化 |
+| [Data and training](data-and-training.md) | 官方披露的训练信息和迁移时要重查的条件 |
+| [Evaluation](evaluation.md) | 指标与比较口径 |
+| [Deployment](deployment.md) | 导出、量化和板端检查 |
+| [Ecosystem implementations](ecosystem-implementations.md) | 高质量第三方复现、移植和改造 |
+| [Limitations](limitations.md) | 已知限制和未完成项 |
+| [Sources](sources.md) | Source ID 与原始链接 |
 
-- [Architecture](architecture.md)：主要正式分支的核心机制；
-- [Data and training](data-and-training.md)：官方披露与未披露项；
-- [Evaluation](evaluation.md)：指标和比较口径；
-- [Deployment](deployment.md)：导出、量化与边缘部署；
-- [Variants](variants.md)：版本归属和选择导航；
-- [Ecosystem implementations](ecosystem-implementations.md)：非原始实现但值得跟踪的复现、迁移与工程改造；
-- [Limitations](limitations.md)：失败条件、命名冲突和未知项；
-- [Sources](sources.md)：原始论文、正式仓库、文档和补充证据。
+其他页面不再各自维护完整版本名单。新增分支时，先改 `variants.md` 和 `sources.md`；只有结构、训练、评测或部署确实有新内容时，才改对应页面。
 
-## Reading rule
+## 当前状态
 
-各子页面共同构成一个知识条目并继承本页元数据。架构结论先回到对应分支的原始资料；生态实现只能证明该实现自身的行为，不能反向替代原模型定义。具体芯片的真实转换、性能与故障记录应进入 `engineering/`，本条目只保存跨项目可复用的模型级约束。
+- 主要分支和高价值生态改造已经分开；
+- 第一方来源与本人经验已经分开；
+- 尚未逐个冻结所有仓库 revision、权重哈希和完整指标条件；
+- 尚未完成统一硬件复测；
+- 任务、机制、来源和工程回链已经补齐；本人已确认目录分工和维护成本可以接受。
+- 这次验收只表示 YOLO 可以作为后续模型族的建设样板，不表示所有分支、指标和部署结论都已独立复测。
 
-## Current boundary
+## 维护成本复盘
 
-- 已补齐主要编号分支、命名分支、开放词汇分支及来源入口；
-- “主要”不等于穷举所有使用 YOLO 名称的论文，新增分支仍须通过收录门；
-- 尚未逐个冻结所有仓库 revision、权重哈希和官方指标表；
-- 生态实现已按来源身份隔离，但“值得跟踪”不等于已经独立验证其精度或维护质量；
-- 尚未加入本人的统一硬件复测，因此不能给出跨版本速度冠军结论；
-- YOLO 样板的文件粒度与维护成本仍待本人核验。
+上一次补分支时同时改了 8 个页面，说明谱系信息重复得太多。本轮改成：
+
+- 新增分支必改：`variants.md`、`sources.md`；
+- 有新机制时才改 `architecture.md`；
+- 训练、评测、部署有实质差异时才改对应页面；
+- README 不再保存版本名单。
+
+这样增加普通分支通常只改 2 个文件，不会再把整个目录一起翻一遍。

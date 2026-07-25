@@ -16,7 +16,7 @@
 
 ```yaml
 status: working | validated | canonical
-type: mechanism | model-index | research-question | diagnostic | experiment | case | finding | playbook | product-hypothesis | market-case
+type: mechanism | task | model-index | research-question | diagnostic | experiment | case | finding | playbook | product-hypothesis | market-case
 rigor: quick | standard | high-risk
 provenance: <source category or evidence pointer>
 evidence_status: unverified | partial | verified

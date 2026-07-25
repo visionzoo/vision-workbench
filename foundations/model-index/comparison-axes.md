@@ -1,19 +1,30 @@
-# Model-family comparison axes
+# Model comparison
 
-跨模型比较必须至少绑定以下维度，缺失项写 `not disclosed` 或 `not measured`：
+先判断能不能比，再看数字大小。
 
-| Dimension | Required context |
+## 比较前提
+
+两个模型至少要同时满足下面三项，才适合直接比较：
+
+1. 角色相同，例如都是完整检测器，或者都是 backbone；
+2. 任务相同，例如都是闭集目标检测；
+3. 数据、输入、精度、硬件和计时范围足够接近。
+
+## 必须记录的信息
+
+| 项目 | 至少记录 |
 |---|---|
-| Identity | model, variant, task head, weights, source revision |
-| Architecture | backbone, neck/encoder, head, assignment, post-processing |
-| Training | initialization, disclosed data, schedule, augmentation, resolution |
-| Quality | dataset version, split, metric definition, evaluator |
-| Complexity | parameters, FLOPs/MACs definition, input shape |
-| Latency | hardware, precision, batch, runtime, warm-up, timing boundary |
-| Memory | peak/runtime definition, batch, input, runtime |
-| Export | exporter version, format, opset, dynamic/static shape |
-| Quantization | PTQ/QAT, calibration data, granularity, accuracy delta |
-| License | code, weights and data terms checked separately |
-| Evidence | official report, third-party reproduction, or first-party experiment |
+| 身份 | 模型、版本、权重、仓库 revision、任务头 |
+| 角色与任务 | task-model / backbone / component；检测 / 分类等 |
+| 结构 | backbone、特征融合、head、后处理 |
+| 训练 | 初始化、数据、分辨率、主要增强和训练周期 |
+| 精度 | 数据集版本、split、指标定义、evaluator |
+| 复杂度 | 参数量、FLOPs/MACs 口径、输入尺寸 |
+| 速度 | 硬件、精度、batch、runtime、预热和计时边界 |
+| 内存 | 峰值或运行时口径、batch、输入和 runtime |
+| 导出 | 导出器版本、格式、opset、动态或固定 shape |
+| 量化 | PTQ/QAT、校准数据、量化方式和精度变化 |
+| 许可 | 代码、权重和数据分别检查 |
+| 证据 | 第一方报告、第三方复现或本人实验 |
 
-不同论文表格中的 AP、FPS 或 FLOPs 不因列名相同就可直接排序。只有评价协议和计时边界足够接近时才形成比较结论。
+缺项写 `not disclosed` 或 `not measured`。不同论文里的 AP、FPS 和 FLOPs 不能因为列名一样就直接排序。
