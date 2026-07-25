@@ -14,7 +14,7 @@ date: 2026-07-25
 
 ## Decision
 
-- 把 \`backbone\`、\`neck\`、\`head\` 作为模型索引中的一级模块角色，并在路线图中分别建设。
+- 把 `backbone`、`neck`、`head` 作为模型索引中的一级模块角色，并在路线图中分别建设。
 - Backbone 待办统一覆盖 ResNet、MobileNet、EfficientNet、ConvNeXt、ViT、Swin、HRNet、TuringViT 等代表谱系；只有真实使用、材料规模和独立维护需求成立时才建立 family 页面。
 - Neck 按跨层、跨尺度和跨模态特征融合组织；head 按任务输出表征组织，不按当前流行模型名称堆叠。
 - YOLO、DETR、DINO detector 等完整 task model 仍按任务范式和可追溯谱系维护；DINO 自监督、CLIP 等训练或对齐体系也保持独立对象，不强行塞进三段式架构。
@@ -29,7 +29,7 @@ date: 2026-07-25
 
 ## Verification
 
-- \`TODO.md\` 不再把 MobileNet、ViT 与其他 backbone 家族不对称地列为仓库级路线；
+- `TODO.md` 不再把 MobileNet、ViT 与其他 backbone 家族不对称地列为仓库级路线；
 - Backbone、neck、head 分别有目标、边界和可验证出口；
 - model index 与 registry 对三类模块使用一致角色名称；
 - 关键点待办同时链接 HRNet 的 backbone 角色和完整任务比较；
