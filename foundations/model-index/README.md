@@ -48,7 +48,7 @@
 
 | Module role | 含义 | 例子 |
 |---|---|---|
-| `backbone` | 在任务网络中提取供 neck、head 或 decoder 消费的特征 | ResNet、HRNet |
+| `backbone` | 为具体任务系统提供可由 neck、head、decoder 或其他消费者使用的特征；输出可以是单尺度、分层或并行多分辨率 | ResNet、HRNet |
 | `visual-encoder` | 将图像或视频编码为可供视觉任务、检索、多模态或决策模块消费的表示 | ViT、TuringViT、CLIP image encoder |
 | `neck` | 位于主要特征提取与任务输出之间的特征转换或融合模块 | FPN、PAN、BiFPN |
 | `head` | 将上游特征转换为局部任务输出 | YOLO detection head、heatmap keypoint head |
@@ -67,6 +67,8 @@
 - `relation-only`：层级或接口不匹配、来源条件不可分，或代码/权重/评测证据缺失，只记录关系与区分性实验，不排名。
 
 完整 HRNet-based 关键点方案与 PFLD 可以做系统级比较，但不能由此直接推导其 backbone 或输出表征谁普遍更优。YOLO、TuringViT 和 CLIP image encoder 的压力测试及完整输入输出、精度、计算、内存、导出、量化和证据契约见 [comparison-axes.md](comparison-axes.md)。
+
+契约只规定“什么可以比较”。真正启动选型时，使用 [Backbone selection under task and deployment constraints](backbone-selection.md) 完成瓶颈归因、结构分面覆盖、预训练归因、四级实验漏斗、采用/撤销判断和变更驱动的维护反馈；不要从 family 名称或跨论文指标直接跳到采用结论。
 
 Classification 是与 detection、keypoint localization 等并列的任务；visual encoding 是模块角色或能力，不是同层任务。开放词汇分类/检测仍归任务能力，只有标注、筛选、难例分析和评测辅助等更大流程归 VLM system context。
 

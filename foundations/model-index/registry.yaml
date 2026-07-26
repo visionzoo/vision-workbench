@@ -12,7 +12,7 @@ usage_scope_definitions:
   pretraining-source: "主要作为权重、表征或初始化来源被下游使用。"
 
 module_role_definitions:
-  backbone: "为任务网络提取分层特征。"
+  backbone: "为具体任务系统提供可由 neck、head、decoder 或其他消费者使用的特征；输出可以是单尺度、分层或并行多分辨率。"
   visual-encoder: "将图像或视频编码为可供下游消费的表示。"
   neck: "在主要特征提取与任务输出之间转换或融合特征。"
   head: "将上游特征转换为局部任务输出。"
