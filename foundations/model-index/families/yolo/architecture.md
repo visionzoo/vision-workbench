@@ -14,8 +14,6 @@ YOLO 各分支变化很多，但真正需要抓住的是四个位置：多尺度
 | 端到端、NMS-free | YOLOv10、YOLO26 | 减少后处理和端到端延迟 | 是否真正免 NMS 取决于实现和导出图 | Y017、Y023 |
 | 视觉语言与开放词汇 | YOLO-World、YOLOE | 用文本或视觉提示扩展类别 | prompt、词汇缓存和权重不能跨实现混用 | Y018、Y021 |
 
-完整分支归属只在 [Variants](variants.md) 维护。Source ID 在 [Sources](sources.md) 查询。
-
 ## 与 Backbone 选型的维护边界
 
 本页是 YOLO 内部架构演化的权威来源：具体分支采用了哪些 backbone、CSP/C2f/ELAN/GELAN 路径、结构重参数化模块、neck 或 head，以及训练图与推理图如何变化，统一在本目录按版本维护。
