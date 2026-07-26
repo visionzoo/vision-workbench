@@ -10,7 +10,7 @@ evidence_status: partial
 owner_review: pending
 ip_review: not-applicable
 tags: [backbone, visual-encoder, transfer-learning, dense-prediction, edge-ai, quantization]
-related: [README.md, comparison-axes.md, families/yolo/README.md, families/turingvit/README.md]
+related: [README.md, comparison-axes.md, families/yolo/README.md, families/yolo/architecture.md, families/turingvit/README.md]
 ---
 
 # Backbone selection under task and deployment constraints
@@ -53,20 +53,36 @@ input and preprocessing
 
 这一步的目标是避免“可见的模型名称”吸走注意力。backbone 是高成本变量，只有在更便宜的解释无法说明现象时才进入实验。
 
-## 3. 候选机制地图：用来提出假设，不用来裸排名
+## 3. 用结构分面覆盖候选，不建立单层分类树
 
-| 候选路线 | 主要结构变量 | 适合检验的假设 | 常见适配代价 | 首要风险 |
-|---|---|---|---|---|
-| ResNet 类残差 CNN | 分阶段下采样、残差块、标准卷积 | 成熟卷积基线是否已经足够；更深/更宽是否带来可复现收益 | 通道投影、选择 C2–C5 输出 | 不是所有硬件上都最快；深度增加可能只增加容量而未解决任务瓶颈 |
-| MobileNet 类轻量 CNN | depthwise + pointwise、倒残差、SE、硬件感知搜索 | 严格延迟/内存约束下，是否能保留足够局部表征 | neck 通道补偿、算子融合检查 | 低 FLOPs 不保证低延迟；depthwise、SE 或激活可能在目标 NPU 上不友好 |
-| EfficientNet / EfficientNetV2 类 | 宽度、深度、分辨率联合缩放；MBConv/Fused-MBConv | 资源增加时，平衡缩放是否优于只加深或加宽 | 输入分辨率与输出层级需重新核对 | 原论文效率与搜索硬件、训练协议绑定；复用缩放系数不等于复现其 Pareto 前沿 |
-| ConvNeXt 类现代 CNN | 大核 depthwise、stage ratio、LayerNorm、现代训练配方 | 在保留卷积层级结构时，现代化设计能否改善迁移 | LayerNorm/layout、算子融合与内存检查 | 训练 recipe 与架构贡献容易混淆；桌面 GPU 结果不能外推到端侧 NPU |
-| Plain ViT | patch token、全局 self-attention、单一或少量尺度 | 全局关系与大规模预训练是否解决 CNN 未覆盖的误差 | 中间 token 选择、特征金字塔、position interpolation | 小数据、细粒度定位和高分辨率计算可能需要较强适配；通常不是稠密任务的即插即用替换 |
-| Swin 类层级 Transformer | 局部窗口、shifted window、分阶段层级 | 需要层级特征与较大上下文时，窗口注意力是否有增益 | window/shape 约束、neck 对接、导出替换 | window partition、reshape、LayerNorm 和 attention 的真实 NPU 覆盖必须实测 |
-| HRNet 类高分辨率网络 | 并行多分辨率分支、重复跨尺度融合 | 定位精度是否受持续高分辨率表征限制 | 多分支输出聚合、较高激活内存 | FLOPs 不能充分表达多分支带宽和峰值内存；不应因关键点结果好就推断所有任务都更优 |
-| 新型 linear/hybrid encoder | 线性注意力、混合卷积/attention、动态分辨率 | 高分辨率全局建模能否在目标部署条件下降低成本 | 自定义算子、动态 shape、projection | 第一方理论复杂度或特定 GPU kernel 不能替代目标 runtime 证据 |
+ResNet、CSP、EfficientNet、HRNet、RepVGG 和 Swin 不是同一维度上的互斥类别：它们分别强调连接路径、缩放策略、分辨率组织、部署变换或 token 组织。一个实现可能同时命中多个分面，因此全面性由“选型变量是否覆盖”判断，而不是由模型名单长度判断。
 
-这张表只建立“机制—假设—风险”关系。具体实现、权重、输出节点和许可证未确定前，资格均不高于 relation-only。
+| 分面 | 需要辨别的取值 | 它改变的选型问题 |
+|---|---|---|
+| 空间组织 | 层级下采样、持续高分辨率、单尺度 token、层级/金字塔 token | 局部细节、全局上下文、输出 stride 和激活内存如何权衡 |
+| 基础计算块 | 标准卷积、depthwise / inverted bottleneck、channel shuffle、ghost feature、大核卷积、attention、SSM | 目标 runtime 的真实算子覆盖、带宽、融合和量化代价 |
+| 特征与梯度路径 | residual、dense、CSP、ELAN | 梯度传播、特征复用和计算冗余如何组织 |
+| 多尺度接口 | 单输出、C2–C5 / P2–P5、并行多分辨率 | neck、head 或 decoder 能否直接消费，适配层成本是否被计入 |
+| 缩放与搜索 | 深度/宽度缩放、compound scaling、设计空间或 NAS | 容量收益是否与搜索硬件、输入分辨率和训练配方绑定 |
+| 部署变换 | 结构重参数化、算子融合、量化友好设计 | 训练图与推理图是否一致可追溯，转换后精度和延迟是否仍成立 |
+| 预训练关系 | supervised、MAE、DINO、CLIP 等 | 权重、数据和学习目标如何影响迁移；它们不是架构类别 |
+
+### 3.1 代表对象映射
+
+| 代表对象 | 主要分面组合 | 进入候选时要验证什么 | 维护边界 |
+|---|---|---|---|
+| ResNet / ResNeXt / DenseNet | 层级 CNN；residual、grouped 或 dense path | 成熟 control 是否足够；深度、宽度或连接方式是否解决真实误差 | 只在重复比较需求出现后建设 family |
+| MobileNet / ShuffleNet / GhostNet | depthwise、shuffle 或 cheap feature generation | 低 FLOPs 是否在目标 NPU 上转化为低延迟；SE、激活和 layout 是否受支持 | 不再用“MobileNet 类”代表全部轻量机制 |
+| EfficientNet / EfficientNetV2 / RegNet | 轻量块或标准卷积 + scaling / search | 搜索硬件、输入尺度和训练 recipe 改变后，效率结论是否仍成立 | 缩放/搜索策略与基础计算块分开记录 |
+| ConvNeXt | 层级下采样 + 大核 depthwise + 现代训练配方 | 架构收益能否与训练 recipe 分离；LayerNorm/layout 的部署成本 | 不把 GPU 结果直接外推至端侧 NPU |
+| CSP / ELAN 系实现 | CSP 或 ELAN 路径 + 多尺度检测接口 | 检测误差是否真由路径组织改善，projection / neck 代价是否固定 | YOLO 中的 CSPDarknet、C2f、ELAN、GELAN 版本事实只在 [YOLO Architecture](families/yolo/architecture.md) 维护 |
+| RepVGG / MobileOne / FastViT / RepViT | 结构重参数化，可再叠加 CNN 或 hybrid block | 分支融合是否正确；训练图、导出图、INT8 图和板端结果是否一致 | 作为部署变换分面，不建立互斥“Rep 类”总目录 |
+| ViT | 单尺度 patch token + 全局 attention | 小数据、细粒度定位、高分辨率成本和中间节点适配 | visual encoder 能被改造成 backbone，不等于可以直接比较 |
+| Swin / PVT / PVTv2 | 层级或金字塔 token + 局部/稀疏 attention | 稠密任务接口、window/reshape/LayerNorm 和目标 runtime 覆盖 | PVT 补足金字塔 Transformer，不把 Swin 当作唯一形式 |
+| HRNet | 并行多分辨率 + 重复融合 | 定位收益是否来自持续高分辨率；峰值内存和带宽是否可接受 | 不由关键点结果外推到所有任务 |
+| VMamba 等视觉 SSM | 层级表示 + 状态空间计算 | 工具链、算子、量化和目标硬件证据是否足够 | 当前仅为前沿观察，资格为 relation-only，不进入工程实测候选 |
+
+映射只用于防漏和提出假设，不给 family 做静态优缺点排名。具体实现、权重、输出节点和许可证未确定前，比较资格不高于 relation-only；需要 projection、fusion 或节点改造时，按 controlled-adaptation 评价完整组合。
 
 ## 4. 按任务建立第一组候选，而不是建立全家族排行榜
 
@@ -237,7 +253,31 @@ C. 随机初始化：在预算允许时作为架构/预训练归因对照，而�
 
 典型撤销触发器包括：关键 slice 收益消失、量化误差越界、runtime 升级后出现 fallback、输入范围变化、预训练权重许可变化，或适配层成本抵消了 backbone 收益。
 
-## 10. 当前最有价值的三组验证
+## 10. 变更驱动的维护反馈闭环
+
+本条目不是一次性完成的静态指南。每次新增模型、替换实现、记录实测结果或修正分类，都可能暴露新的维护要求；修改者必须在同一次变更中完成影响检查，不能只增加事实而让维护方式滞后。
+
+| 变更触发器 | 必查影响 | 权威落点 | 何时更新本文 |
+|---|---|---|---|
+| 新增或重命名 backbone / encoder 候选 | 分面、比较资格、接口与许可证是否明确 | 对象事实回 family / registry；通用机制回 mechanisms | 只有选型变量、Gate、采用门或撤销条件发生变化时 |
+| YOLO 新版本或内部模块变化 | 是通用机制还是 YOLO 版本实现，是否形成重复事实源 | 版本、C2f/ELAN/GELAN 等采用事实回 YOLO；本文只保留选型关系 | 该变化改变检测 backbone 的候选或验证方式时 |
+| 新 runtime、芯片或 INT8 结果 | unsupported op、fallback、量化边界、计时口径是否改变 | 原始结果回 Engineering / Research 案例 | 结果足以修改 Gate 0/3、风险或撤销条件时 |
+| 新预训练权重或训练方法 | 收益来自架构、数据、目标还是优化协议 | learning paradigm / 权重来源及具体实验 | 需要改变三臂实验、冻结策略或证据归因时 |
+| 新任务、输入或下游消费者 | 原有输出节点、stride 和适配成本是否仍成立 | 任务事实回 tasks，组合事实回案例 | 产生新的任务起点、接口快照字段或区分性实验时 |
+| 发现重复、冲突或长期维护成本 | 权威来源、交叉引用和责任边界是否仍清楚 | 保留一个事实源，其他位置改为关系 | 维护边界本身需要修正时 |
+
+每次修改结束前回答六个问题：
+
+1. 这次事实变化是否产生新的维护责任？
+2. 哪个文件是唯一权威来源，是否出现复制维护？
+3. 比较资格、接口快照、Gate、采用门或撤销条件是否要改？
+4. TODO、registry、related links 和 family 边界是否仍一致？
+5. 新结论来自公开资料、第三方结果、本人实测还是受限观察？
+6. 若无需调整维护方式，PR 中是否明确记录“检查过但无影响”，避免无人判断？
+
+只有真实变更反复触发同一种检查，才把它固化为新字段、模板或自动化；不因一次偶发现象预建空结构。维护反馈本身也接受撤销：若新增规则长期不再区分决策或只制造填写负担，应简化或删除，并保留理由。
+
+## 11. 当前最有价值的三组验证
 
 这不是排期，而是把契约落到常见视觉问题的最小可执行单元：
 
@@ -247,7 +287,7 @@ C. 随机初始化：在预算允许时作为架构/预训练归因对照，而�
 
 这三组分别检验全局/局部分类表征、高分辨率定位表征和多尺度检测表征，足以反向验证本文是否可用；不需要先建立所有 family 页面。
 
-## 11. 事实、推断与未知项
+## 12. 事实、推断与未知项
 
 ### 第一方事实支持
 
@@ -274,7 +314,7 @@ C. 随机初始化：在预算允许时作为架构/预训练归因对照，而�
 - INT8 首个显著误差层与最终任务损失；
 - 训练与部署收益是否足以覆盖长期维护成本。
 
-## 12. Primary sources
+## 13. Primary sources
 
 - [ResNet: Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385)
 - [MobileNetV3: Searching for MobileNetV3](https://arxiv.org/abs/1905.02244)
@@ -284,4 +324,10 @@ C. 随机初始化：在预算允许时作为架构/预训练归因对照，而�
 - [Vision Transformer: An Image is Worth 16×16 Words](https://arxiv.org/abs/2010.11929)
 - [Swin Transformer](https://arxiv.org/abs/2103.14030)
 - [HRNet: High-Resolution Representations for Labeling Pixels and Regions](https://arxiv.org/abs/1904.04514)
+- [CSPNet: A New Backbone that can Enhance Learning Capability of CNN](https://arxiv.org/abs/1911.11929)
+- [ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design](https://arxiv.org/abs/1807.11164)
+- [GhostNet: More Features from Cheap Operations](https://arxiv.org/abs/1911.11907)
+- [RepVGG: Making VGG-style ConvNets Great Again](https://arxiv.org/abs/2101.03697)
+- [Pyramid Vision Transformer](https://arxiv.org/abs/2102.12122)
+- [VMamba: Visual State Space Model](https://arxiv.org/abs/2401.10166)
 - [TorchVision feature extraction](https://docs.pytorch.org/vision/main/feature_extraction.html)
