@@ -255,11 +255,9 @@ C. 随机初始化：在预算允许时作为架构/预训练归因对照，而�
 
 ## 10. 变更驱动的维护反馈闭环
 
-本条目不是一次性完成的静态指南。每次新增模型、替换实现、记录实测结果或修正分类，都可能暴露新的维护要求；修改者必须在同一次变更中完成影响检查，不能只增加事实而让维护方式滞后。
+Foundations 通用的维护影响闭环以 [Foundations maintenance](../MAINTENANCE.md) 为唯一权威来源。本节只补充 Backbone 选型特有的触发器、依赖项和事实落点，不复制通用流程。
 
-维护闭环按固定顺序执行：先识别变更触发器，再更新唯一权威来源；随后检查依赖它的比较契约、Gate、采用/撤销条件、TODO、registry 和交叉引用；最后记录“需要更新什么”或“已检查、无影响”的结论。不能先在多个页面复制新事实，再等待以后收敛。
-
-本节本身也是维护对象。当同一种遗漏在多个独立变更中反复出现，或一次遗漏已经造成错误决策、重复事实源或明显返工时，应根据真实触发记录修订下面的触发器、检查项或落点；若某条规则长期不能区分决策，只产生填写负担，则合并或删除。修订维护方式必须说明触发它的实际变更，不能以“以后可能有用”为理由扩建流程。
+新增模型、替换实现、记录实测结果或修正分类时，先按该维护规范完成影响检查，再用下表判断是否需要更新本文；不能先在多个页面复制新事实，再等待以后收敛。
 
 | 变更触发器 | 必查影响 | 权威落点 | 何时更新本文 |
 |---|---|---|---|
@@ -279,7 +277,7 @@ C. 随机初始化：在预算允许时作为架构/预训练归因对照，而�
 5. 新结论来自公开资料、第三方结果、本人实测还是受限观察？
 6. 若无需调整维护方式，PR 中是否明确记录“检查过但无影响”，避免无人判断？
 
-只有真实变更反复触发同一种检查，才把它固化为新字段、模板或自动化；不因一次偶发现象预建空结构。维护反馈本身也接受撤销：若新增规则长期不再区分决策或只制造填写负担，应简化或删除，并保留理由。
+新增、升级或删除维护规则的门槛统一由 [Foundations maintenance](../MAINTENANCE.md) 决定；本文只随真实的 Backbone 选型变量、Gate、采用门、撤销条件或事实边界变化而更新。
 
 ## 11. 当前最有价值的三组验证
 
@@ -339,4 +337,11 @@ C. 随机初始化：在预算允许时作为架构/预训练归因对照，而�
 - [RepVGG: Making VGG-style ConvNets Great Again](https://arxiv.org/abs/2101.03697)
 - [Pyramid Vision Transformer](https://arxiv.org/abs/2102.12122)
 - [VMamba: Visual State Space Model](https://arxiv.org/abs/2401.10166)
+- [ResNeXt: Aggregated Residual Transformations for Deep Neural Networks](https://arxiv.org/abs/1611.05431)
+- [DenseNet: Densely Connected Convolutional Networks](https://arxiv.org/abs/1608.06993)
+- [RegNet: Designing Network Design Spaces](https://arxiv.org/abs/2003.13678)
+- [MobileOne: An Improved One millisecond Mobile Backbone](https://arxiv.org/abs/2206.04040)
+- [FastViT: A Fast Hybrid Vision Transformer using Structural Reparameterization](https://arxiv.org/abs/2303.14189)
+- [RepViT: Revisiting Mobile CNN From ViT Perspective](https://arxiv.org/abs/2307.09283)
+- [PVT v2: Improved Baselines with Pyramid Vision Transformer](https://arxiv.org/abs/2106.13797)
 - [TorchVision feature extraction](https://docs.pytorch.org/vision/main/feature_extraction.html)
