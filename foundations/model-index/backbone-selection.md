@@ -3,11 +3,11 @@ status: working
 type: model-index
 rigor: standard
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-27
 confidence: medium
 provenance: public-first-party-sources
 evidence_status: partial
-owner_review: pending
+owner_review: accepted
 ip_review: not-applicable
 tags: [backbone, visual-encoder, transfer-learning, dense-prediction, edge-ai, quantization]
 related: [README.md, comparison-axes.md, families/yolo/README.md, families/yolo/architecture.md, families/turingvit/README.md]
@@ -18,6 +18,15 @@ related: [README.md, comparison-axes.md, families/yolo/README.md, families/yolo/
 本文解决的不是“哪个 backbone 最强”，而是：在任务、数据、输入、下游接口和目标硬件已经明确时，如何判断瓶颈是否真的在 backbone，并用最小实验选出当前条件下更合适的特征提取方案。
 
 比较资格、指标口径和证据等级以 [Backbone / visual encoder comparison contract](comparison-axes.md) 为准。本文负责把契约落实为选型、实验和撤销流程，不维护跨论文排行榜。
+
+权威边界如下：
+
+- [Comparison contract](comparison-axes.md) 唯一负责比较层级、比较资格、输入输出契约、指标口径和证据等级；
+- 本文只负责跨对象的结构分面、信息组织、选型顺序、采用门和撤销条件；
+- family 条目唯一负责对象身份、版本谱系、具体实现和第一方披露，本文只保留与选型有关的关系；
+- 真实训练、导出、量化和板端结果回到 `engineering/`，可证伪实验和 finding 回到 `research/`，不能由本文的资料整合替代。
+
+因此，本文通过本人审查只表示信息结构与证据边界被接受，不表示任何候选已经通过任务实验、目标硬件验收或知识成熟度晋级。
 
 ## 1. 先重构问题：选择对象是系统，不是名称
 
@@ -141,7 +150,7 @@ ConvNeXt 或 plain ViT 只有在出现明确假设时加入，例如现有 CNN �
 
 ## 6. 把架构收益与预训练收益拆开
 
-预训练模型通常值得优先使用，但不能把最终收益全部归因于 backbone 架构。至少记录：
+预训练模型通常值得优先使用，但不能把最终收益全部归因于 backbone 架构。这里的三臂设计是归因控制规则，不是“某种预训练普遍更优”的外部事实；supervised、MAE、DINO、CLIP 等只作为关系变量，具体方法、权重和数据事实应在对应对象被真实激活后回到其权威条目。至少记录：
 
 - 预训练数据、任务、输入分辨率和权重版本；
 - classifier/head 被删除或替换的方式；
@@ -279,32 +288,46 @@ Foundations 通用的维护影响闭环以 [Foundations maintenance](../MAINTENA
 
 新增、升级或删除维护规则的门槛统一由 [Foundations maintenance](../MAINTENANCE.md) 决定；本文只随真实的 Backbone 选型变量、Gate、采用门、撤销条件或事实边界变化而更新。
 
-## 11. 当前最有价值的三组验证
+## 11. 信息结构的三个压力测试场景
 
-这不是排期，而是把契约落到常见视觉问题的最小可执行单元：
+以下场景只用于检查本文能否表达不同任务对 Backbone 信息的需求，不是排期、实验入口或采用承诺：
 
-1. 小 ROI 分类：标准残差 CNN vs 轻量 CNN，固定输入与分类头，验证 stem/downsampling、预训练和 INT8 的实际影响。
-2. 局部关键点：HRNet 类高分辨率路线 vs 轻量层级 CNN + 同一 heatmap decoder，先固定坐标与 visibility 链路。
-3. 轻量检测：保留当前检测器为完整方案基线；只有误差归因指向特征表征后，才在同一 neck/head 下替换具体 backbone。
+1. 小 ROI 分类：能否把输入尺寸、stem/downsampling、预训练、分类头和量化分别表示，而不从模型名称直接推导排名。
+2. 局部关键点：能否区分持续高分辨率特征、层级特征、heatmap/回归表示、decoder、坐标链和 visibility 的权威归属。
+3. 轻量检测：能否区分完整 YOLO 方案、具体 backbone 实现、多尺度输出、neck/head 和 P2/P3 接入关系，并把版本事实留在 family 条目。
 
-这三组分别检验全局/局部分类表征、高分辨率定位表征和多尺度检测表征，足以反向验证本文是否可用；不需要先建立所有 family 页面。
+这三组分别压力测试全局/局部分类表征、高分辨率定位表征和多尺度检测表征的关系表达。具体工作只有在 `TODO.md` 另行激活后才建立实验协议；当前不需要创建 family 页面、任务条目或工程案例。
 
 ## 12. 事实、推断与未知项
 
+### 第一方事实—来源映射
+
+下表把本文使用的主要事实和关系直接映射到第一方来源。它只证明来源如何定义或报告对象，不证明这些对象在本人的任务、数据或硬件上成立。
+
+| 信息对象或判断 | 第一方来源 | 可以支持 | 不能支持 |
+|---|---|---|---|
+| residual、grouped transformation、dense connection | `S01`、`S15`、`S16` | ResNet、ResNeXt、DenseNet 各自公开的连接与特征复用设计 | 三者在未指定任务和协议下的排名 |
+| mobile / efficient CNN 与 scaling / search | `S02`、`S03`、`S04`、`S10`、`S11`、`S17` | MobileNetV3、EfficientNet/V2、ShuffleNetV2、GhostNet、RegNet 的官方设计目标和结构变量 | 低 FLOPs 必然转化为任意 NPU 上的低延迟 |
+| modern ConvNet 与结构重参数化 | `S05`、`S12`、`S18`、`S19`、`S20` | ConvNeXt、RepVGG、MobileOne、FastViT、RepViT 的第一方结构与训练/推理图关系 | 特定 GPU、CPU 或移动平台结果可直接外推到目标 runtime |
+| token、层级表示与持续高分辨率 | `S06`、`S07`、`S08`、`S13`、`S21` | ViT、Swin、HRNet、PVT/PVTv2 的输入组织、层级或多分辨率表示 | visual encoder 无适配即可成为任意稠密任务 backbone |
+| CSP / ELAN 关系边界 | `S09` 与 [YOLO Architecture](families/yolo/architecture.md) | CSPNet 的跨阶段部分连接机制；YOLO 具体分支中的采用事实由 family 条目维护 | 把 CSP、ELAN、GELAN 合并为一个静态 family 或跨版本排名 |
+| 视觉状态空间路线 | `S14` | VMamba 的第一方机制和层级视觉表示主张 | 目标 NPU 的算子覆盖、INT8 精度、延迟或工程采用价值 |
+| 中间特征提取能力 | `S22` | TorchVision 可以从可追踪节点取得中间激活 | 被提取张量已经满足下游语义、尺度和部署接口 |
+
 ### 第一方事实支持
 
-- ResNet 以残差学习缓解深层网络优化困难；
-- MobileNetV3 使用硬件感知搜索和轻量结构，原始目标硬件是移动 CPU；
-- EfficientNet 讨论宽度、深度、分辨率的联合缩放，EfficientNetV2进一步引入训练感知搜索与 Fused-MBConv；
-- ConvNeXt 是在现代训练和架构设计下重新审视纯 ConvNet；
-- ViT 将图像转换为 patch sequence，并依赖大规模预训练展示迁移能力；
-- Swin 使用层级结构和 shifted windows 面向通用视觉 backbone；
-- HRNet 通过并行多分辨率分支和重复融合维持高分辨率表示。
-- CSPNet 以跨阶段部分连接处理梯度信息与计算冗余；它是特征/梯度路径机制，不是与 CNN、Transformer 并列的唯一类别；
-- ShuffleNetV2 明确把内存访问和平台特性纳入高效网络设计，GhostNet 用廉价操作生成更多特征图；二者不能被 depthwise 一项完全代表；
-- RepVGG 通过结构重参数化把训练期多分支转换为推理期简单结构，因此训练图与部署图必须分别核验；
-- PVT 使用逐级缩小的金字塔表示面向稠密预测，说明层级 Transformer 不只有窗口注意力；
-- VMamba 提供视觉状态空间路线的第一方机制证据，但当前仓库尚无目标 NPU 工具链与量化证据。
+- ResNet 以残差学习缓解深层网络优化困难。`S01`
+- MobileNetV3 使用硬件感知搜索和轻量结构，原始目标硬件是移动 CPU。`S02`
+- EfficientNet 讨论宽度、深度、分辨率的联合缩放，EfficientNetV2 进一步引入训练感知搜索与 Fused-MBConv。`S03`、`S04`
+- ConvNeXt 是在现代训练和架构设计下重新审视纯 ConvNet。`S05`
+- ViT 将图像转换为 patch sequence，并依赖大规模预训练展示迁移能力。`S06`
+- Swin 使用层级结构和 shifted windows 面向通用视觉 backbone。`S07`
+- HRNet 通过并行多分辨率分支和重复融合维持高分辨率表示。`S08`
+- CSPNet 以跨阶段部分连接处理梯度信息与计算冗余；它是特征/梯度路径机制，不是与 CNN、Transformer 并列的唯一类别。`S09`
+- ShuffleNetV2 明确把内存访问和平台特性纳入高效网络设计，GhostNet 用廉价操作生成更多特征图；二者不能被 depthwise 一项完全代表。`S10`、`S11`
+- RepVGG 通过结构重参数化把训练期多分支转换为推理期简单结构，因此训练图与部署图必须分别核验。`S12`
+- PVT 使用逐级缩小的金字塔表示面向稠密预测，说明层级 Transformer 不只有窗口注意力。`S13`
+- VMamba 提供视觉状态空间路线的第一方机制证据，但当前仓库尚无目标 NPU 工具链与量化证据。`S14`
 
 ### 当前推断
 
@@ -323,25 +346,25 @@ Foundations 通用的维护影响闭环以 [Foundations maintenance](../MAINTENA
 
 ## 13. Primary sources
 
-- [ResNet: Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385)
-- [MobileNetV3: Searching for MobileNetV3](https://arxiv.org/abs/1905.02244)
-- [EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks](https://arxiv.org/abs/1905.11946)
-- [EfficientNetV2: Smaller Models and Faster Training](https://arxiv.org/abs/2104.00298)
-- [ConvNeXt: A ConvNet for the 2020s](https://arxiv.org/abs/2201.03545)
-- [Vision Transformer: An Image is Worth 16×16 Words](https://arxiv.org/abs/2010.11929)
-- [Swin Transformer](https://arxiv.org/abs/2103.14030)
-- [HRNet: High-Resolution Representations for Labeling Pixels and Regions](https://arxiv.org/abs/1904.04514)
-- [CSPNet: A New Backbone that can Enhance Learning Capability of CNN](https://arxiv.org/abs/1911.11929)
-- [ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design](https://arxiv.org/abs/1807.11164)
-- [GhostNet: More Features from Cheap Operations](https://arxiv.org/abs/1911.11907)
-- [RepVGG: Making VGG-style ConvNets Great Again](https://arxiv.org/abs/2101.03697)
-- [Pyramid Vision Transformer](https://arxiv.org/abs/2102.12122)
-- [VMamba: Visual State Space Model](https://arxiv.org/abs/2401.10166)
-- [ResNeXt: Aggregated Residual Transformations for Deep Neural Networks](https://arxiv.org/abs/1611.05431)
-- [DenseNet: Densely Connected Convolutional Networks](https://arxiv.org/abs/1608.06993)
-- [RegNet: Designing Network Design Spaces](https://arxiv.org/abs/2003.13678)
-- [MobileOne: An Improved One millisecond Mobile Backbone](https://arxiv.org/abs/2206.04040)
-- [FastViT: A Fast Hybrid Vision Transformer using Structural Reparameterization](https://arxiv.org/abs/2303.14189)
-- [RepViT: Revisiting Mobile CNN From ViT Perspective](https://arxiv.org/abs/2307.09283)
-- [PVT v2: Improved Baselines with Pyramid Vision Transformer](https://arxiv.org/abs/2106.13797)
-- [TorchVision feature extraction](https://docs.pytorch.org/vision/main/feature_extraction.html)
+- `S01` [ResNet: Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385)
+- `S02` [MobileNetV3: Searching for MobileNetV3](https://arxiv.org/abs/1905.02244)
+- `S03` [EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks](https://arxiv.org/abs/1905.11946)
+- `S04` [EfficientNetV2: Smaller Models and Faster Training](https://arxiv.org/abs/2104.00298)
+- `S05` [ConvNeXt: A ConvNet for the 2020s](https://arxiv.org/abs/2201.03545)
+- `S06` [Vision Transformer: An Image is Worth 16×16 Words](https://arxiv.org/abs/2010.11929)
+- `S07` [Swin Transformer](https://arxiv.org/abs/2103.14030)
+- `S08` [HRNet: High-Resolution Representations for Labeling Pixels and Regions](https://arxiv.org/abs/1904.04514)
+- `S09` [CSPNet: A New Backbone that can Enhance Learning Capability of CNN](https://arxiv.org/abs/1911.11929)
+- `S10` [ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design](https://arxiv.org/abs/1807.11164)
+- `S11` [GhostNet: More Features from Cheap Operations](https://arxiv.org/abs/1911.11907)
+- `S12` [RepVGG: Making VGG-style ConvNets Great Again](https://arxiv.org/abs/2101.03697)
+- `S13` [Pyramid Vision Transformer](https://arxiv.org/abs/2102.12122)
+- `S14` [VMamba: Visual State Space Model](https://arxiv.org/abs/2401.10166)
+- `S15` [ResNeXt: Aggregated Residual Transformations for Deep Neural Networks](https://arxiv.org/abs/1611.05431)
+- `S16` [DenseNet: Densely Connected Convolutional Networks](https://arxiv.org/abs/1608.06993)
+- `S17` [RegNet: Designing Network Design Spaces](https://arxiv.org/abs/2003.13678)
+- `S18` [MobileOne: An Improved One millisecond Mobile Backbone](https://arxiv.org/abs/2206.04040)
+- `S19` [FastViT: A Fast Hybrid Vision Transformer using Structural Reparameterization](https://arxiv.org/abs/2303.14189)
+- `S20` [RepViT: Revisiting Mobile CNN From ViT Perspective](https://arxiv.org/abs/2307.09283)
+- `S21` [PVT v2: Improved Baselines with Pyramid Vision Transformer](https://arxiv.org/abs/2106.13797)
+- `S22` [TorchVision feature extraction](https://docs.pytorch.org/vision/main/feature_extraction.html)
