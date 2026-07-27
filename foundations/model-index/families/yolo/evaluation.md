@@ -47,9 +47,9 @@ RKNN Model Zoo 列出 YOLO11n/s/m 的 FP16/INT8 示例，并把 RV1126B 列为�
 
 多尺度特征不自动解决低有效像素，COCO/LVIS 指标也不能预测 IR、车载、工业或自定义类别表现。NMS-based 与 one-to-one 输出的 score 和结果选择语义不同，比较前先统一任务级输出。
 
-## 4. 当前个人结果
+## 4. 工程候选记录
 
-- [海思 INT8 局部目标案例](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)：PC 端 F1 约 0.8；板端存在阈值敏感的少检现象。尚缺同一评测集上的 ONNX/OM 成对指标和完整延迟记录。
-- [RV1126B RKNN INT8 案例](../../../../engineering/cases/yolo11-rv1126b-rknn-int8-alignment.md)：实验链路已确定，最终精度和性能指标尚未形成，不能借用厂商 benchmark 或另一个芯片案例补齐。
+- [海思 INT8 局部目标案例记录](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)：历史对话记录了 PC 端 F1 约 0.8 和板端阈值敏感的少检现象；当前尚未找到对应模型、数据 split、评测输出和 ONNX/OM 结果，不能作为本人已复核指标。
+- [RV1126B RKNN INT8 案例记录](../../../../engineering/cases/yolo11-rv1126b-rknn-int8-alignment.md)：目前只形成候选验证问题，尚未定位自有 YOLO11 模型、Toolkit/runtime 版本、转换产物或板端输出；厂商 benchmark 不能补齐这些证据。
 
-任何指标都要能回到工程案例。缺少模型、数据、输入、阈值、硬件或 runtime 的孤立数字不进入这里。
+以上记录在恢复原始证据并通过本人审查前，不属于当前个人结果。任何指标都要能回到模型、数据、输入、阈值、硬件、runtime 和原始输出。

@@ -46,9 +46,9 @@ source preprocessing
 
 这张表是诊断入口，不是根因判定。网络层证据如何命名、捕获和比较，将在独立诊断工作包中建立；本页不提前写入未执行结果。
 
-## 4. 两条个人链路
+## 4. 两条候选工程链路
 
-- [YOLO11n 局部目标 → ONNX → 海思 INT8 OM](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)：已有板端少检与阈值观察。当前只能说明候选在较低阈值下仍出现，不能排除量化、预处理和输出解释。
-- [YOLO11 → ONNX → RKNN INT8 → RV1126B](../../../../engineering/cases/yolo11-rv1126b-rknn-int8-alignment.md)：厂商示例覆盖该模型族与 SoC（Y025），个人实验仍需完成同输入、逐级输出和任务指标对齐。
+- [YOLO11n 局部目标 → ONNX → 海思 INT8 OM](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)：历史记录包含板端少检与阈值观察，但当前尚未定位同一模型的 ONNX、OM、转换配置和板端原始输出，不能据此判定量化、预处理或输出解释。
+- [YOLO11 → ONNX → RKNN INT8 → RV1126B](../../../../engineering/cases/yolo11-rv1126b-rknn-int8-alignment.md)：厂商示例覆盖该模型族与 SoC（Y025），但当前尚未定位自有转换产物、版本清单和板端结果。
 
-两条链路的模型图、转换器、runtime、芯片和结果不同，不共用阈值、指标或中间节点结论。通用入口见[模型量化与精度对齐](../../../../engineering/diagnostics/model-quantization-accuracy-alignment.md)；真实结果只进入对应工程案例。
+两条记录尚不能证明链路已经闭环，也不共用阈值、指标或中间节点结论。通用入口见[模型量化与精度对齐](../../../../engineering/diagnostics/model-quantization-accuracy-alignment.md)；恢复后的真实结果只进入对应工程案例。

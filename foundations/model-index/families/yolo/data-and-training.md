@@ -63,7 +63,7 @@
 - YOLO26 报告 Progressive Loss、STAL 和 P2/P6 配置；官方未为所有 P2/P6 规模提供对应预训练权重，适用性仍需自有训练验证（Y023）。
 - YOLO-World、YOLOE 和 YOLOE-26 需要记录图文预训练、prompt、文本编码器或词汇缓存，不能套用闭集检测训练记录（Y018、Y021、Y023）。
 
-[YOLO11n 局部目标案例](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)目前只支持“训练—ONNX—INT8 链路已跑通”和阈值敏感现象；尚不能证明冻结策略、P2/P3 选择或量化根因。
+[YOLO11n 局部目标案例记录](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)中声称训练—ONNX—INT8 链路已跑通，并描述了阈值敏感现象；但当前资产盘点尚未找到能对应同一权重、配置、日志和评测输出的原始证据。它目前不能支持训练策略、P2/P3 选择、量化根因或链路已复现等技术结论。
 
 ## 7. 每次训练最少保存什么
 
