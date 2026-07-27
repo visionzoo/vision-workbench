@@ -4,71 +4,76 @@ type: model-index
 rigor: standard
 provenance: official-papers-repositories-documentation-and-owner-use
 evidence_status: partial
-owner_review: pending
+owner_review: accepted
 ip_review: not-applicable
 confidence: medium
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-27
 ---
 
 # YOLO
 
-YOLO 是实时目标检测模型家族，但不是一条由单一组织连续维护的版本线。YOLOv3 之后，不同编号和命名分支来自不同作者或组织，代码、许可和版本含义也不同。
+YOLO 是实时目标检测模型家族，但不是由单一组织连续维护的一条版本线。YOLOv3 之后，不同编号和命名分支来自不同作者或组织，代码、许可、结构和输出语义都可能不同。
 
-## 先解决怎么选
+## 总目标：从一个完整检测器建立专家知识链
 
-下面是当前判断，不是跨来源排行榜。最终选择仍以目标数据和目标芯片复测为准。
+这里积累 YOLO，不是为了记住版本号，而是为了能够沿真实因果链解释和排查一个视觉系统：
 
-| 任务 | 当前先看 | 为什么 | 使用前要确认 | 本人经验 |
-|---|---|---|---|---|
-| 闭集、轻量、希望训练导出省事 | YOLO11n / YOLO11s | Ultralytics 的训练、验证和导出入口完整；nano/small 便于先建立速度—精度基线 | package 版本、许可、目标 runtime 的算子和后处理 | YOLO11n 已用于局部目标训练、ONNX 导出和 INT8 部署 |
-| 小目标或局部目标 | 先用轻量分支做目标像素和标签实验，再决定是否加高分辨率特征层 | 小目标首先受有效像素、标注和正样本影响；换大模型不一定解决 | 目标尺寸分布、裁剪方式、P2/P3 输出、输入尺寸和延迟预算 | 已有 YOLO11n、224×224、单类局部目标案例 |
-| RKNN / RV1126B | 优先从 RKNN Model Zoo 已适配的 YOLO11、YOLOX 等分支中选 | 厂商已有 FP16/INT8 转换和 C/Python 示例，可减少接口猜测 | Model Zoo、Toolkit2、runtime、SoC 必须绑定版本；厂商支持不等于自有模型已对齐 | YOLO11 → RKNN INT8 对齐案例进行中 |
-| 需要去掉外部 NMS | YOLO26 或其他明确的端到端分支 | 默认一对一 head 可直接输出最终结果，减少传统后处理 | 导出的是一对一还是一对多 head，目标 NPU 是否支持整张图 | 尚无本人部署结论 |
-| 类别在运行时变化 | YOLO-World / YOLOE | 支持文本、视觉提示或开放词汇路线 | 原始实现与框架迁移版、文本编码器、词汇缓存、训练数据和许可 | 尚无本人验证 |
+```text
+任务与数据
+→ 输入与标注
+→ backbone 分层表征
+→ neck 多尺度融合
+→ detection head 原始输出
+→ 训练时的标签分配与损失
+  或推理时的 decode 与结果选择
+→ 任务指标、延迟和部署边界
+```
 
-如果目标只是做一个闭集小模型，不要因为版本号更新就直接换模型；先固定数据、输入、评测和板端 Oracle，再比较候选分支。
+面对漏检、框偏、重复框或板端差异时，应先判断问题发生在哪一段，再选择证据；不能从最终现象直接归因“模型不够大”或“量化有问题”。
 
-## 在 Foundations 里的位置
+## 选分支时先问什么
 
-- 对象身份：`model-family`
-- 使用范围：`complete-solution`
-- 模块角色：family 层级不预设；只有选定具体分支、实现和输出节点后，才判断其中的 backbone、neck、head 或 task decoder
-- 主要任务：[目标检测](../../../tasks/object-detection.md)
-- 核心机制：[多尺度、标签分配、检测头、结果选择](../../../mechanisms/object-detection-core.md)
-- 比较契约：[Backbone / visual encoder comparison contract](../../comparison-axes.md)
-- 真实工程案例：[海思 INT8 局部目标](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)、[RV1126B RKNN INT8 对齐](../../../../engineering/cases/yolo11-rv1126b-rknn-int8-alignment.md)
+下表是检索入口，不是跨来源排行榜。最终选择仍由目标数据、输入、实现版本和目标硬件复测决定。
 
-## 本人经验
+| 需求 | 当前先看 | 关键原因 | 采用前必须确认 |
+|---|---|---|---|
+| 闭集、轻量、快速建立基线 | YOLO11n / YOLO11s | 训练、验证和导出入口完整；候选案例记录使用这一分支，但原始权重映射待确认 | package revision、许可、输入输出和目标 runtime |
+| 小目标或局部目标 | 轻量分支 + 目标像素/标签/尺度分析 | 有效像素、标签完整性、P3/P2 接入和正样本覆盖通常先于扩大模型 | 目标尺寸分布、裁剪、stride、召回与延迟预算 |
+| RKNN / RV1126B | 厂商已适配的 YOLO11 等实现 | 已有转换与运行入口，可减少接口猜测 | Model Zoo、Toolkit、runtime、SoC 和自有权重必须分别核验 |
+| 减少外部 NMS | YOLO26 或其他明确的端到端分支 | one-to-one 输出可减少传统结果选择 | 实际导出的是哪条 head、runtime 是否支持、精度口径是否一致 |
+| 运行时改变类别 | YOLO-World / YOLOE | 引入文本、视觉提示或开放词汇能力 | 原版与迁移版、文本编码器、词汇缓存、训练数据和许可 |
 
-已确认有两条可独立支配的个人实验链路：
+如果目标只是做一个闭集小模型，不因版本号更新直接换模型。先固定数据、输入、评测和部署 Oracle，再比较候选分支。
 
-1. YOLO11n 局部目标训练 → ONNX → 海思 INT8 OM；
-2. YOLO11 → ONNX → RKNN INT8 → RV1126B。
+## 按问题进入
 
-两条链路分开记录。第一条已有训练和板端现象，第二条仍在建设精度验证流程；不得共用指标或把计划写成结果。
-
-## 各页面分工
-
-| 页面 | 只负责什么 |
+| 页面 | 负责的问题 |
 |---|---|
-| [Variants](variants.md) | 版本归属、维护方和主来源；这是谱系的唯一维护位置 |
-| [Architecture](architecture.md) | 结构和机制发生了什么变化 |
-| [Data and training](data-and-training.md) | 迁移训练时真正影响结果的判断 |
-| [Evaluation](evaluation.md) | 少量第一方事实和本人的评测口径 |
-| [Deployment](deployment.md) | 导出、量化和板端检查 |
-| [Ecosystem implementations](ecosystem-implementations.md) | 高质量第三方复现、移植和改造 |
-| [Limitations](limitations.md) | 已知限制和未完成项 |
-| [Sources](sources.md) | Source ID 与原始链接 |
+| [Architecture](architecture.md) | YOLO11 参考数据流、各模块输入输出、机制变化和失效线索 |
+| [Data and training](data-and-training.md) | 数据、标签分配、损失、增强和迁移训练判断 |
+| [Evaluation](evaluation.md) | 第一方代表事实、个人评测口径和任务级 Oracle |
+| [Deployment](deployment.md) | 导出、量化、runtime、后处理和板端契约 |
+| [Variants and implementations](variants.md) | 原作者分支、维护组织、第三方复现和芯片适配的身份关系 |
+| [Sources](sources.md) | 稳定 Source ID、第一方资料和固定实现 revision |
+| [目标检测机制](../../../mechanisms/object-detection-core.md) | 跨模型复用的检测因果链；不维护 YOLO 版本事实 |
 
-新增分支时，先改 `variants.md` 和 `sources.md`；只有结构、训练、评测或部署确实有新内容时，才改对应页面。
+新增分支先更新版本身份和来源。只有它确实改变结构、训练、评测或部署判断时，才修改对应页面。
 
-## 当前到哪一步
+## 工程候选记录
 
-- 目录分工和维护方式已经由本人验收；
-- 主要分支、第三方生态改造和 Source ID 已建立；
-- 两条本人实验已经独立建案，但实验记录和内容尚未完成人工验收；
-- 没有逐个冻结所有仓库 revision、权重哈希和完整指标条件；
-- 没有做统一硬件、统一 runtime 的全家族复测。
+当前有两条由历史对话重构、但尚未找到完整原始证据映射的案例记录：
 
-因此当前仍是 `working / partial`。这里的 `owner_review: pending` 指技术内容尚待本人验收，不否定此前已经完成的目录样板验收。
+1. [YOLO11n 局部目标 → ONNX → 海思 INT8 OM](../../../../engineering/cases/yolo11n-local-target-hisi-int8.md)；
+2. [YOLO11 → ONNX → RKNN INT8 → RV1126B](../../../../engineering/cases/yolo11-rv1126b-rknn-int8-alignment.md)。
+
+第一条记录了训练、导出和板端阈值现象，第二条记录了拟建设的精度验证链路。当前资产盘点尚不能把这些陈述对应到同一组模型、配置、日志和评测输出，因此它们只能定义待恢复的问题，不能作为本人已验证结果。两条候选链路也不共用指标。
+
+## 当前边界
+
+- 本轮目录职责、固定 YOLO11 实现解释和第一方来源边界已于 2026-07-27 通过本人审查；
+- 工程引用的证据降级边界已于 2026-07-27 通过本人审查；接受不改变底层 case 的未验证状态；
+- 第一方结构和指标仍只代表对应版本与来源，不代表本人复测；
+- 两个工程案例都缺少完整 manifest、成对任务指标和网络层证据；
+- 没有进行统一硬件、统一 runtime 的家族横向复测；
+- 以上降级不否定已接受的第一方技术内容；整个条目继续保持 working / partial / medium。
