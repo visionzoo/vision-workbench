@@ -1,6 +1,6 @@
 # Sources
 
-访问日期：2026-07-25。Source ID 用于让其他页面的具体判断能回到原始资料。第一方只对对应分支负责，不存在覆盖全部 YOLO 的统一官方。
+访问日期：2026-07-27。Source ID 让具体判断能回到原始资料。第一方只对对应分支和版本负责，不存在覆盖全部 YOLO 的统一官方。
 
 | ID | 分支/用途 | 第一方资料 |
 |---|---|---|
@@ -22,7 +22,7 @@
 | Y016 | YOLOv9 | [paper](https://arxiv.org/abs/2402.13616), [repository](https://github.com/WongKinYiu/yolov9) |
 | Y017 | YOLOv10 | [paper](https://arxiv.org/abs/2405.14458), [repository](https://github.com/THU-MIG/yolov10) |
 | Y018 | YOLO-World | [paper](https://arxiv.org/abs/2401.17270), [repository](https://github.com/AILab-CVC/YOLO-World) |
-| Y019 | YOLO11 | [documentation](https://docs.ultralytics.com/models/yolo11/), [repository](https://github.com/ultralytics/ultralytics) |
+| Y019 | YOLO11 | [documentation](https://docs.ultralytics.com/models/yolo11/), [repository at `b89d6f407`](https://github.com/ultralytics/ultralytics/tree/b89d6f407044276b1f54753ef98c719e89928631), [YOLO11 YAML](https://github.com/ultralytics/ultralytics/blob/b89d6f407044276b1f54753ef98c719e89928631/ultralytics/cfg/models/11/yolo11.yaml), [Detect implementation](https://github.com/ultralytics/ultralytics/blob/b89d6f407044276b1f54753ef98c719e89928631/ultralytics/nn/modules/head.py), [detection loss](https://github.com/ultralytics/ultralytics/blob/b89d6f407044276b1f54753ef98c719e89928631/ultralytics/utils/loss.py), [TaskAlignedAssigner](https://github.com/ultralytics/ultralytics/blob/b89d6f407044276b1f54753ef98c719e89928631/ultralytics/utils/tal.py) |
 | Y020 | YOLOv12 | [paper](https://arxiv.org/abs/2502.12524), [repository](https://github.com/sunsmarterjie/yolov12) |
 | Y021 | YOLOE | [paper](https://arxiv.org/abs/2503.07465), [repository](https://github.com/THU-MIG/yoloe) |
 | Y022 | YOLOv13 | [paper](https://arxiv.org/abs/2506.17733), [repository](https://github.com/iMoonLab/yolov13) |
@@ -31,6 +31,18 @@
 | Y025 | RKNN Model Zoo | [repository](https://github.com/airockchip/rknn_model_zoo) |
 | Y026 | YOLOv5-Lite | [repository](https://github.com/ppogg/YOLOv5-Lite) |
 | Y027 | Ultralytics export | [export documentation](https://docs.ultralytics.com/modes/export/), [benchmark documentation](https://docs.ultralytics.com/modes/benchmark/) |
+
+## Y019 事实—来源边界
+
+| 判断 | 直接来源 | 能支持 | 不能支持 |
+|---|---|---|---|
+| YOLO11 P3/P4/P5 拓扑和节点关系 | 固定 revision 的 `yolo11.yaml` | 该配置文件的模块、连接和尺度 | 其他 release、scale 的真实运行 shape 或转换后拓扑 |
+| C3k2、C2PSA、Detect 行为 | 固定 revision 的模块源码 | 构造和 forward 语义 | 目标 runtime 的等价实现与数值精度 |
+| `reg_max=16`、训练 raw outputs、DFL/decode/sigmoid | 固定 revision 的 `Detect` 源码 | 该 revision 常规检测 head 的代码路径 | 某个导出文件是否包含相同步骤 |
+| TaskAlignedAssigner、BCE、box 与 DFL loss | 固定 revision 的 loss/assigner 源码 | 默认检测损失的实现事实 | 未记录配置的实际训练确实走了相同路径 |
+| COCO 指标、参数量和速度 | 在线模型文档 | 文档声明的环境与口径 | 本人数据、硬件、版本或端到端链路结果 |
+
+上表中的“不能支持”是证据边界，不表示相反结论已经成立。工程案例必须另外冻结自己的 package、配置、权重、导出和 runtime。
 
 ## 使用规则
 

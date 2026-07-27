@@ -15,7 +15,7 @@
 
 ## Active work
 
-当前无激活工作。2B 信息整合已通过本人审查并回到候选基线；新的工程或实验工作须按真实问题另行激活。
+当前无激活工作。YOLO family 知识审校已于 2026-07-27 通过本人审查；条目保持 working / partial / medium。现有工程案例和通用网络层对齐诊断按真实需求、原始证据和独立验收另行激活。
 
 ## Accumulation candidates
 

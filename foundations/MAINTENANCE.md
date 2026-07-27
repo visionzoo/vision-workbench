@@ -67,6 +67,6 @@ YOLO 的目录分工和维护方式已经通过本人验收；技术内容仍按
 4. RV1126B 上使用 YOLO11 INT8，哪些是厂商已支持，哪些仍要本人验证？
 5. INT8 板端少检时，为什么降低阈值只能用于定位问题，不能直接算修复？
 
-对应答案应能从 [YOLO](model-index/families/yolo/README.md)、[生态实现](model-index/families/yolo/ecosystem-implementations.md)、[评测](model-index/families/yolo/evaluation.md)、[部署](model-index/families/yolo/deployment.md)和工程案例中找到。
+对应答案应能从 [YOLO](model-index/families/yolo/README.md)、[版本与实现关系](model-index/families/yolo/variants.md)、[评测](model-index/families/yolo/evaluation.md)、[部署](model-index/families/yolo/deployment.md)和工程案例中找到。
 
 后续模型族仍需按实际需要单独开始，不因样板通过就批量建立。
