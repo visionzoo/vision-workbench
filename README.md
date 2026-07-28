@@ -36,7 +36,7 @@
 
 ## Current focus
 
-1. [YOLO](foundations/model-index/families/yolo/README.md)：目录样板已验收，正在用真实训练与板端案例完成第一版内容闭环。
+1. [YOLO](foundations/model-index/families/yolo/README.md)：理论知识链与证据边界已完成人工审查；现有海思与 RV1126B 记录仍是未验证候选，真实训练、转换和板端实验按独立工作包激活。
 2. [Model quantization and accuracy alignment](engineering/diagnostics/model-quantization-accuracy-alignment.md)：诊断框架草稿，尚未独立验证。
 3. [Vision algorithm release and delivery](engineering/playbooks/vision-algorithm-release-and-delivery.md)：发布流程草稿，尚未独立验证。
 4. [DMS eye visibility and localization reliability](research/questions/dms-eye-visibility-and-localization-reliability.md)：研究问题草稿，尚未独立验证。
