@@ -2,93 +2,91 @@
 status: working
 type: case
 rigor: standard
-provenance: owner-independent-experiment-and-first-party-platform-reference
-evidence_status: partial
+provenance: conversation-draft
+evidence_status: unverified
 owner_review: pending
-ip_review: accepted
-confidence: medium
+ip_review: pending
+confidence: low
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-28
 ---
 
-# YOLO11 到 RV1126B：RKNN INT8 精度对齐
+# YOLO11 到 RV1126B：RKNN INT8 候选记录与证据恢复
 
-## 当前状态
+## 当前证据结论
 
-这是一条独立的个人实验链路：YOLO11 → ONNX → RKNN INT8 → RV1126B，使用 RKNN Toolkit2。目标不是只完成转换，而是建立可重复的精度验证：同一输入下比较 ONNX、RKNN 模拟器和板端最终框、分数与类别，必要时再比较中间层。
+历史对话把本页描述为一条独立个人实验链路：YOLO11 → ONNX → RKNN INT8 → RV1126B，并计划使用 RKNN Toolkit2 做逐级精度对齐。当前没有找到能确认该链路已经建立的模型、配置、转换产物、板端输出、版本清单或评测结果，因此本页只保留候选身份、证据门和平台投影。
 
-这条链路仍在进行中。当前没有已确认的最终精度和延迟指标，因此本页不借用另一芯片案例、RKNN Model Zoo 或其他 SoC 的数字补齐结果。
+2026-07-28 在 `ultralytics`、`rknn`、`vision-workbench` 三个直接相关目录的 8 层范围内进行了有界盘点。没有找到身份匹配的 YOLO11 ONNX、RV1126B RKNN、板端输出或评测 manifest；已发现的 `.rknn` 文件属于其他模型或其他平台示例。全量递归搜索曾超时，因此该结果只约束已检查范围。
 
-## 已确认事实
+## 候选身份
 
 | 项目 | 当前记录 |
 |---|---|
-| 模型 | YOLO11；具体规模和权重哈希待补 |
-| 源格式 | ONNX |
-| 板端格式 | RKNN INT8 |
-| 芯片 | Rockchip RV1126B |
-| 工具链 | RKNN Toolkit2；具体版本待补 |
-| 目标 | 自动转换、同图逐级对齐、任务级精度比较、可复现 manifest |
-| 最终精度 | 尚未形成 |
-| 最终延迟 | 尚未形成 |
+| 模型 | 对话候选：YOLO11；没有身份一致的权重哈希 |
+| 源格式 | 对话候选：ONNX；实体未定位 |
+| 板端格式 | 对话候选：RKNN INT8；实体未定位 |
+| 芯片 | 对话候选：Rockchip RV1126B；设备与版本记录未定位 |
+| 工具链 | 对话候选：RKNN Toolkit2；toolkit/runtime/driver 版本未定位 |
+| 目标 | 候选计划：同图逐级对齐、任务级比较和可复现 manifest |
+| 最终精度 | 无证据 |
+| 最终延迟 | 无证据 |
 
-RKNN Model Zoo 当前提供 YOLO11n/s/m 的 FP16/INT8 示例，并把 RV1126B 列为支持平台（Y025）。这是厂商适配入口，不是本模型已经通过精度验收的证据。
+厂商适配范围由 [YOLO deployment](../../foundations/model-index/families/yolo/deployment.md) 维护；它只能提供实施入口，不能替代本案例的自有模型与设备证据。
 
-## 要解决的问题
+## 证据恢复门
 
-转换成功后仍可能出现：
+重新激活转换或板端实验前，至少要取得：
 
-1. ONNX 与 RKNN 的预处理不一致；
-2. INT8 校准导致分类分数或定位分布压缩；
-3. 输出顺序、DFL/decode、坐标格式或 NMS 实现不一致；
-4. 模拟器与板端 runtime/driver 行为不同；
-5. 单张图看似一致，但在小目标、暗光、遮挡等分层上掉点。
+- 可独立支配且权属清楚的源权重、模型配置和 SHA-256；
+- ONNX 实体、导出命令、opset、输入输出签名和结构检查结果；
+- RKNN 转换配置、校准数据 manifest、toolkit 版本和转换日志；
+- RV1126B 设备标识、runtime、driver、SDK 来源与板端程序版本；
+- 同一评测集、预处理和后处理合同，以及可独立复算的逐样本结果。
 
-## 验证链路
+任何一项来自公司任务、设备、代码、数据、模型或客户上下文时，本页继续保持 `ip_review: pending`，不得复制资产或公开组合信息。
+
+## 取得独立资产后的最小首轮
+
+第一轮只回答“差异最早出现在哪个语义阶段”，不直接建设完整自动化系统：
 
 ```text
-固定 Run ID、模型、数据清单和预处理
-        ↓
-ONNX Runtime 原始输出与检测结果
-        ↓
-RKNN 模拟器原始输出与检测结果
-        ↓
-RV1126B 板端原始输出与检测结果
-        ↓
-任务指标、分层差异和延迟
+同一原始样本
+  → ONNX / RKNN 模拟器 / RV1126B 的实际模型输入
+  → 三端最终网络输出（decode 与 NMS 前）
+  → 同一后处理下的框、分数与类别
 ```
 
-每一步保存：
+每次运行必须保存 Run ID、模型与输入哈希、Toolkit2/runtime/driver 版本、输入输出签名、量化参数和原始结果。如果实际输入已经不同，先修正输入；如果最终网络输出一致但检测结果不同，先修正 decode/NMS。只有最终网络输出已经分歧时才进入网络层。
 
-- 模型、代码、Toolkit2、runtime 和 driver 版本；
-- 输入文件哈希与送入模型前的数据哈希；
-- 输出 tensor 名称、shape、dtype、量化参数和语义；
-- 框匹配 IoU、类别一致率、分数差异；
-- precision、recall、F1 或 AP 及其数据范围；
-- 模型执行和完整链路延迟。
+## 本案例的网络层投影
 
-## 区分实验
+通用诊断顺序和记录字段只由 [Model quantization and accuracy alignment](../diagnostics/model-quantization-accuracy-alignment.md) 维护。本案例仅补充 YOLO/RKNN 的候选映射：
 
-| 现象 | 先做什么 | 目的 |
-|---|---|---|
-| 模拟器和 ONNX 已不同 | 核对预处理、量化参数和输出解释；比较非量化/INT8 | 区分接口问题与量化问题 |
-| 模拟器一致、板端不同 | 固定 runtime/driver，回读实际输入输出 | 定位板端集成或版本差异 |
-| 只有小目标掉点 | 按目标尺寸看分数和框差异，检查 calibration set | 避免全局均值掩盖局部失真 |
-| 最终框不同但输出接近 | 对齐 decode、sigmoid、阈值和 NMS | 区分网络输出与后处理 |
-| 最终输出仍无法定位 | 选择少量关键层 dump | 避免一开始就做全层对比 |
+- 候选语义边界为 backbone 末端输出、P3/P4/P5 融合输出、Detect 输入和最终网络输出；
+- 只有 ONNX 图与 RKNN 可观测 tensor 的上下游关系能够证明语义一致时，才允许比较；不能按节点序号或相似名称配对；
+- 每个实际映射必须记录 ONNX tensor locator、RKNN tensor locator、shape/layout/dtype、scale/zero-point/axis 和观测 API；
+- 如果 RKNN 转换融合或隐藏了候选边界，将其记为 `unknown`，选择最近的可证明等价点，不能伪造“逐层对齐”；
+- 找到首个显著分歧后只检查相邻算子、融合和量化映射；最终仍回到固定评测集的任务指标。
 
-## 验收条件
+## 任务与系统验收
 
-最终阈值尚未设定。在个人评测集形成前，不预先承诺“相似度多少即通过”。至少要同时满足：
+阈值要在真实资产和基线形成后由本人预先接受，不能先写一个“相似度通过线”。未来至少同时检查：
 
-- 同图输出语义和后处理完全对齐；
-- 任务级精度损失在明确阈值内；
-- 小目标等关键分层没有不可接受退化；
-- 连续运行、模型执行和完整链路性能可复现；
-- Run ID 能回到模型、数据、工具链和原始结果。
+- 三端输入、输出语义和同一后处理合同；
+- 固定评测集上的 precision、recall、F1 或 AP，以及明确的基线和样本量；
+- 小目标、暗光、遮挡等与真实任务相关的关键分层；
+- 模型执行延迟、完整链路延迟和连续运行稳定性；
+- Run ID 能返回模型、数据、转换配置、工具链和原始结果。
+
+中间 tensor 相似度只负责定位，不替代任务与系统 Oracle。
+
+## 晋级与停止条件
+
+只有取得上述身份一致证据并完成人工 IP 审查，才考虑把本页改为 `evidence_status: partial`。如果实际资产对应其他 SoC、模型族或任务，应建立真实案例或放弃本候选记录，不得借用其他 RKNN 示例拼接链路。
 
 ## 当前边界
 
-这不是已完成的 RKNN 精度验证系统，也不是厂商示例复述。真实模型、RV1126B 和后续指标均来自本人可独立支配的个人实验；公开剥离时重新做 IP 和 Git 历史审核。
+这不是已完成的 RKNN 精度验证系统，也不能确认真实模型、RV1126B 或结果来自可独立支配的个人实验。证据与权属恢复前保持 `working / unverified / pending / low`；不得公开、晋级或把厂商示例数字写成本人结果。
 
-相关基础页：[YOLO evaluation](../../foundations/model-index/families/yolo/evaluation.md)、[YOLO deployment](../../foundations/model-index/families/yolo/deployment.md)；通用诊断草稿：[模型量化与精度对齐](../diagnostics/model-quantization-accuracy-alignment.md)。
+相关基础页：[YOLO evaluation](../../foundations/model-index/families/yolo/evaluation.md)、[YOLO deployment](../../foundations/model-index/families/yolo/deployment.md)。
