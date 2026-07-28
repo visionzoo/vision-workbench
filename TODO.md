@@ -15,7 +15,9 @@
 
 ## Active work
 
-当前无激活工作。YOLO family 知识审校已于 2026-07-27 通过本人审查；条目保持 working / partial / medium。现有工程案例和通用网络层对齐诊断按真实需求、原始证据和独立验收另行激活。
+当前无激活工作。Phase 2 YOLO 工程证据完整性审查已于 2026-07-28 通过本人审查并关闭：本轮没有恢复出模型—配置—导出—运行—评测的完整链路，两篇历史案例继续保持 `working / unverified / pending / low`。本次接受只覆盖证据身份纠正、盘点边界、IP 门和未来验证合同，不验证历史指标、转换结果或板端行为；真实训练、转换和设备实验按独立工作包重新激活。
+
+YOLO family 信息审校已于 2026-07-27 通过本人审查；其条目继续保持 `working / partial / medium`，不因工程审查自动晋级。
 
 ## Accumulation candidates
 
