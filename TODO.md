@@ -15,12 +15,14 @@
 
 ## Active work
 
-### MobileNet 架构族信息基线
+### DINO 自监督视觉表征方法族信息基线
 
-- **Problem**：现有 backbone 选型页已经覆盖轻量网络分面，但 MobileNet 仍缺少独立 family 身份、v1–v4 机制边界、官方实现责任和目标硬件反证；继续只用“MobileNet 类”会把 depthwise、搜索、激活、注意力和其它轻量谱系混为一谈。
-- **Belief**：MobileNet v1–v4 形成可追溯的 Google 架构谱系，值得用一个单页权威条目维护；ShuffleNet、GhostNet、EfficientNet、MobileOne、RepViT 等只建立关系，不能并入一个轻量模型百科。
-- **Commitment**：本工作包只新增一个 MobileNet family README、registry 和必要导航；复用现有 comparison/backbone-selection 契约，不新增通用机制页、variants/deployment/sources 子页，不激活权重下载、训练、跨论文排名、导出、量化或目标设备实验。
-- **Verification**：本人审查 family 边界、v1–v4 机制图、论文—固定官方代码—概览文档的来源责任、接口与硬件检查，以及停止拆页和停止追踪的维护规则；接受前保持 `working / partial / pending / medium`。
+- **Problem**：仓库已经把自监督 DINO 与 DETR 检测器 DINO 分开命名，但仍缺少负责 DINO–DINOv3 方法谱系、数据/权重身份、backbone 关系和下游消费边界的权威条目；继续只写“使用 DINO/ViT 特征”会把学习方法、架构、预训练数据和 adapter 混成一个对象。
+- **Belief**：Meta DINO 已形成独立 `method-family`：原始 DINO、DINOv2、register 扩展与 DINOv3 由自蒸馏、masked modeling、数据治理、蒸馏、Gram anchoring 等方法责任连接，但可落在 ViT、ConvNeXt、ResNet 或 XCiT 等不同架构上。
+- **Commitment**：本工作包只新增一个 `dino-self-supervised` family README、registry 和必要导航；领域 DINO、dino.txt、FINO、CHMv2 与第三方封装只建立关系，不新增机制页、任务页、训练项目、权重下载、跨论文排行榜、导出、量化或设备实验。
+- **Verification**：本人审查 method-family 边界、DINO/DINOv2/register/DINOv3 演变、论文—固定官方代码—动态 README 的来源责任、权重与许可、下游消费合同和停止维护规则；接受前保持 `working / partial / pending / medium`。
+
+MobileNet 架构族信息基线已通过 PR #19 合并；剩余范围审查由 family 页面和 registry 状态维护，不再占用 `Active work` 执行位。
 
 目标检测架构演变与 DETR 信息基线已通过 PR #17 / #18 合并；剩余的本人范围审查由 family 页面和 registry 状态维护，不再占用 `Active work` 执行位。
 
@@ -36,11 +38,11 @@ YOLO family 信息审校已于 2026-07-27 通过本人审查；其条目继续�
 
 | 候选方向 | 启动信号 | 当前边界 |
 |---|---|---|
-| **2. Visual feature extraction** | 需要在具体任务和硬件约束下选择或替换 backbone / visual encoder | MobileNet family 信息基线已激活；其它 family 仍按真实需求启动。具体选型、训练、适配和硬件验证另行激活 |
+| **2. Visual feature extraction** | 需要在具体任务和硬件约束下选择或替换 backbone / visual encoder | MobileNet family 信息基线已合并；其它 architecture family 仍按真实需求启动。具体选型、训练、适配和硬件验证另行激活 |
 | **Classification** | 出现图像、ROI 或帧状态分类的复用需求 | 区分闭集与开放词汇、单帧状态与时序事件；眼睛开闭等真实经验可进入 |
 | **Neck / feature fusion** | 多尺度或多层融合成为可区分变量 | 只维护中间特征转换与融合；不建立统一 Adapter 父项 |
 | **Task output representation** | 任务误差需要反推 head、decoder、loss、matcher 或解码选择 | 输出链路相邻不等于同一对象；任务特有事实回到具体任务 |
-| **Self-supervised visual representation** | 需要判断监督预训练与 DINO 等自监督谱系的真实差异 | Meta DINO 与检测器 DINO 分开 |
+| **Self-supervised visual representation** | 需要判断监督预训练与 DINO 等自监督谱系的真实差异 | DINO method-family 信息基线已激活；Meta DINO 与检测器 DINO 分开，真实训练和下游采用另行激活 |
 | **Vision-language alignment** | CLIP 类对齐或开放词汇能力进入真实视觉决策 | 区分模型谱系、训练方法与下游任务，不扩成通用 VLM 百科 |
 | **Video representation** | 单帧表征不足，且需要学习时空特征 | 不把跟踪关联、报警状态机或“使用视频”混成一个任务 |
 | **Detection / DETR** | 固定任务、训练预算和目标硬件后，需要与 YOLO 做受控比较 | 架构演变与 DETR 信息基线已合并并待审查；检测器 DINO 归 DETR，自监督 DINO 分开；未激活训练或硬件结论 |
