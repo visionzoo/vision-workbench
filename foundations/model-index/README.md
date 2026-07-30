@@ -36,7 +36,7 @@
 | Entity kind | 含义 | 例子 |
 |---|---|---|
 | `model-family` | 以可追溯版本谱系维护的一组完整或近完整模型 | YOLO、DETR |
-| `architecture-family` | 主要由可复用结构机制和接口定义的架构谱系 | ResNet、HRNet、ViT、TuringViT |
+| `architecture-family` | 主要由可复用结构机制和接口定义的架构谱系 | MobileNet、ResNet、HRNet、ViT、TuringViT |
 | `component-family` | 边界明确、可嵌入其他架构的组件谱系 | FPN、BiFPN |
 | `method-family` | 主要由训练、对齐、适配或推理方法定义的谱系 | 自监督 DINO、PEFT 方法 |
 
@@ -48,7 +48,7 @@
 
 | Module role | 含义 | 例子 |
 |---|---|---|
-| `backbone` | 为具体任务系统提供可由 neck、head、decoder 或其他消费者使用的特征；输出可以是单尺度、分层或并行多分辨率 | ResNet、HRNet |
+| `backbone` | 为具体任务系统提供可由 neck、head、decoder 或其他消费者使用的特征；输出可以是单尺度、分层或并行多分辨率 | MobileNet、ResNet、HRNet |
 | `visual-encoder` | 将图像或视频编码为可供视觉任务、检索、多模态或决策模块消费的表示 | ViT、TuringViT、CLIP image encoder |
 | `neck` | 位于主要特征提取与任务输出之间的特征转换或融合模块 | FPN、PAN、BiFPN |
 | `head` | 将上游特征转换为局部任务输出 | YOLO detection head、heatmap keypoint head |
@@ -78,4 +78,5 @@ Classification 是与 detection、keypoint localization 等并列的任务；vis
 
 - [YOLO](families/yolo/README.md)：实时目标检测模型族，目录样板已验收；
 - [DETR](families/detr/README.md)：集合预测、one-to-one matching、实时与开放词汇检测谱系，信息基线待本人审查；
+- [MobileNet](families/mobilenet/README.md)：移动视觉架构谱系，维护 v1–v4、接口与硬件边界，信息基线待本人审查；
 - [TuringViT](families/turingvit/README.md)：高分辨率图像/视频视觉编码器与 backbone，内容仍待本人验收。

@@ -57,6 +57,25 @@ families:
     authority_note: "原始 DETR 由 Facebook AI Research 定义；后续分支来自不同组织，不存在覆盖全部谱系的单一官方实现。"
     next_gate: "先完成人工范围审查，再选择固定实现，在同一任务、训练与目标硬件契约下和 YOLO 做受控比较。"
 
+  - id: mobilenet
+    name: MobileNet
+    path: families/mobilenet
+    entity_kind: architecture-family
+    usage_scopes: [reusable-module, pretraining-source]
+    module_roles: [backbone, visual-encoder]
+    learning_paradigms: [supervised]
+    tasks: []
+    system_contexts: []
+    relations: []
+    status: working
+    evidence_status: partial
+    structure_review: pending
+    content_review: pending
+    owner_use: not-confirmed
+    scope: "Google MobileNetV1–V4 及其第一方硬件分支；不把 ShuffleNet、GhostNet、EfficientNet、MobileOne、RepViT 或通用轻量网络混入。"
+    authority_note: "论文定义架构主线；固定 TensorFlow Models revision 定义可定位官方实现。官方概览与代码可能不同步，不能只依赖摘要页判断版本完整性。"
+    next_gate: "先审查家族边界、来源责任和停止维护规则；真实采用需固定实现、任务消费者、runtime 与目标硬件后进入受控比较。"
+
   - id: turingvit
     name: TuringViT
     path: families/turingvit
