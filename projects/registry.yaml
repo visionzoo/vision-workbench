@@ -1,6 +1,6 @@
 schema_version: 1
 public_entry:
-  current: github-profile-readme
+  current: not-established
   portfolio_repository:
     name: vision-portfolio
     create_when:
