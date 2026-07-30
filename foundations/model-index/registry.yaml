@@ -38,6 +38,25 @@ families:
     authority_note: "YOLOv3 之后没有覆盖全部分支的单一维护组织。"
     next_gate: "完成两个真实工程案例、查询检查和本人内容验收后，再决定是否合并主干或建设下一个模型族。"
 
+  - id: detr
+    name: DETR
+    path: families/detr
+    entity_kind: model-family
+    usage_scopes: [complete-solution]
+    module_roles: []
+    learning_paradigms: [supervised]
+    tasks: [object-detection]
+    system_contexts: []
+    relations: []
+    status: working
+    evidence_status: partial
+    structure_review: pending
+    content_review: pending
+    owner_use: not-confirmed
+    scope: "端到端集合预测及其多尺度、去噪、实时和开放词汇分支；不把所有 Transformer 检测器或自监督 DINO 混入。"
+    authority_note: "原始 DETR 由 Facebook AI Research 定义；后续分支来自不同组织，不存在覆盖全部谱系的单一官方实现。"
+    next_gate: "先完成人工范围审查，再选择固定实现，在同一任务、训练与目标硬件契约下和 YOLO 做受控比较。"
+
   - id: turingvit
     name: TuringViT
     path: families/turingvit

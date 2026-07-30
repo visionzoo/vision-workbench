@@ -8,12 +8,12 @@ owner_review: accepted
 ip_review: not-applicable
 confidence: medium
 created: 2026-07-25
-updated: 2026-07-27
+updated: 2026-07-30
 ---
 
 # 目标检测的核心因果链
 
-本页保存跨检测器复用的机制。某个 YOLO 分支采用什么模块、节点或源码实现，由 [YOLO family](../model-index/families/yolo/README.md) 维护。
+本页保存跨检测器复用的运行与诊断机制。某个 YOLO 分支采用什么模块、节点或源码实现，由 [YOLO family](../model-index/families/yolo/README.md) 维护；候选空间、匹配和语义接口在不同架构间如何演变，见 [目标检测架构演变](object-detection-architecture-evolution.md)。
 
 ## 1. 输入与可见信息
 
@@ -56,4 +56,4 @@ decode 把网络表示转换成坐标和分数。NMS 从大量候选中按规则
 
 先固定输入和接口，再比较相同语义的阶段；找到首个显著分歧边界后，只在相邻模块内下钻。中间张量和相似度用于定位，最终接受仍由 decode 后输出与任务级 Oracle 决定。
 
-对应任务定义：[目标检测](../tasks/object-detection.md)。本页的机制结构、推断边界和诊断入口已于 2026-07-27 通过本人审查；接受不等于机制已在全部模型与任务中验证。
+对应任务定义：[目标检测](../tasks/object-detection.md)。本页的机制结构、推断边界和诊断入口已于 2026-07-27 通过本人审查；本次只补充跨架构关系入口，不改变既有接受边界。接受不等于机制已在全部模型与任务中验证。

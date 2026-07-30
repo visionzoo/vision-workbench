@@ -8,7 +8,7 @@ owner_review: accepted
 ip_review: not-applicable
 confidence: medium
 created: 2026-07-25
-updated: 2026-07-27
+updated: 2026-07-30
 ---
 
 # 目标检测
@@ -57,8 +57,9 @@ box + class + confidence
 
 ## 与其他条目的关系
 
-- family 对象与实现事实：[YOLO](../model-index/families/yolo/README.md)
-- 跨模型机制：[目标检测的核心因果链](../mechanisms/object-detection-core.md)
-- 工程诊断：[模型量化与精度对齐](../../engineering/diagnostics/model-quantization-accuracy-alignment.md)
+- family 对象与实现事实：[YOLO](../model-index/families/yolo/README.md)、[DETR](../model-index/families/detr/README.md)；
+- 跨模型运行机制：[目标检测的核心因果链](../mechanisms/object-detection-core.md)；
+- 跨架构演变与比较边界：[目标检测架构演变](../mechanisms/object-detection-architecture-evolution.md)；
+- 工程诊断：[模型量化与精度对齐](../../engineering/diagnostics/model-quantization-accuracy-alignment.md)。
 
-本页只维护任务契约和任务级验收。具体分支结构归模型族，真实项目输入、版本、结果和结论归工程案例。本页的任务契约、Oracle 边界和条目关系已于 2026-07-27 通过本人审查；接受不等于具体模型或工程结果已验证。
+本页只维护任务契约和任务级验收。具体分支结构归模型族，真实项目输入、版本、结果和结论归工程案例。本页的任务契约、Oracle 边界和条目关系已于 2026-07-27 通过本人审查；本次只补充 DETR 与跨架构入口，不改变既有接受边界。接受不等于具体模型或工程结果已验证。
