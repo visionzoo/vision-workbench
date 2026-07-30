@@ -76,6 +76,25 @@ families:
     authority_note: "论文定义架构主线；固定 TensorFlow Models revision 定义可定位官方实现。官方概览与代码可能不同步，不能只依赖摘要页判断版本完整性。"
     next_gate: "先审查家族边界、来源责任和停止维护规则；真实采用需固定实现、任务消费者、runtime 与目标硬件后进入受控比较。"
 
+  - id: dino-self-supervised
+    name: DINO (self-supervised)
+    path: families/dino-self-supervised
+    entity_kind: method-family
+    usage_scopes: [pretraining-source]
+    module_roles: []
+    learning_paradigms: [self-supervised]
+    tasks: []
+    system_contexts: []
+    relations: []
+    status: working
+    evidence_status: partial
+    structure_review: pending
+    content_review: pending
+    owner_use: not-confirmed
+    scope: "Meta/FAIR DINO、DINOv2、register 扩展与 DINOv3 的自监督视觉表征方法谱系；不把 DETR 检测器 DINO、ViT/ConvNeXt 架构或任意下游 DINO 项目混入。"
+    authority_note: "论文定义方法主线；固定官方仓库和模型卡定义可加载 backbone、token/feature 接口、权重与许可。动态 README 中的领域项目和 post-hoc 适配只建立关系。"
+    next_gate: "先审查方法边界、数据/权重/许可和停止维护规则；真实采用需固定 architecture、checkpoint、consumer、adaptation budget、runtime 与任务 Oracle 后比较。"
+
   - id: turingvit
     name: TuringViT
     path: families/turingvit
