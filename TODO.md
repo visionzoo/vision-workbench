@@ -15,7 +15,14 @@
 
 ## Active work
 
-当前无激活工作。Phase 2 YOLO 工程证据完整性审查已于 2026-07-28 通过本人审查并关闭：本轮没有恢复出模型—配置—导出—运行—评测的完整链路，两篇历史案例继续保持 `working / unverified / pending / low`。本次接受只覆盖证据身份纠正、盘点边界、IP 门和未来验证合同，不验证历史指标、转换结果或板端行为；真实训练、转换和设备实验按独立工作包重新激活。
+### Phase 3A：YOLO11 PyTorch → ONNX 数值证据基线
+
+- **Problem**：建立第一条不依赖公司资产、可从固定公开来源复现的 YOLO 工程证据链，先回答静态 FP32 ONNX Runtime CPU 是否在 NMS 前保持固定 PyTorch 实现的输出。
+- **Belief**：私有独立仓库 [visionzoo/yolo11-onnx-evidence-baseline](https://github.com/visionzoo/yolo11-onnx-evidence-baseline) 的候选 run `smoke-001` 已记录固定源码、权重、输入、配置、ONNX 和环境身份；接口为 `[1, 84, 8400]`，当前数值门 `allclose(rtol=1e-4, atol=1e-5)` 通过。该结果尚未独立重复或经本人接受。
+- **Commitment**：本工作包只激活身份、接口、静态 FP32 导出和数值一致性；不激活训练、COCO 任务精度、图简化、动态 shape、FP16/INT8、RKNN、海思或设备实验。独立仓库保持 `private / incubating / ip_review: pending`。
+- **Verification**：在关闭 Phase 3A 前，冻结完整解析依赖锁，从干净环境重新构建并重复 smoke，核对候选报告与原始哈希，再提交本人 `Accept / Revise / Reject / Escalate`。任务级 `|ΔmAP50-95| ≤ 0.001` 留作后续独立工作包。
+
+Phase 2 YOLO 工程证据完整性审查已于 2026-07-28 通过本人审查并关闭：本轮没有恢复出模型—配置—导出—运行—评测的完整链路，两篇历史案例继续保持 `working / unverified / pending / low`。本次接受只覆盖证据身份纠正、盘点边界、IP 门和未来验证合同，不验证历史指标、转换结果或板端行为；真实训练、转换和设备实验按独立工作包重新激活。
 
 YOLO family 信息审校已于 2026-07-27 通过本人审查；其条目继续保持 `working / partial / medium`，不因工程审查自动晋级。
 
