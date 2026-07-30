@@ -35,7 +35,7 @@
 
 | Entity kind | 含义 | 例子 |
 |---|---|---|
-| `model-family` | 以可追溯版本谱系维护的一组完整或近完整模型 | YOLO、检测器 DINO |
+| `model-family` | 以可追溯版本谱系维护的一组完整或近完整模型 | YOLO、DETR |
 | `architecture-family` | 主要由可复用结构机制和接口定义的架构谱系 | ResNet、HRNet、ViT、TuringViT |
 | `component-family` | 边界明确、可嵌入其他架构的组件谱系 | FPN、BiFPN |
 | `method-family` | 主要由训练、对齐、适配或推理方法定义的谱系 | 自监督 DINO、PEFT 方法 |
@@ -77,4 +77,5 @@ Classification 是与 detection、keypoint localization 等并列的任务；vis
 当前条目：
 
 - [YOLO](families/yolo/README.md)：实时目标检测模型族，目录样板已验收；
+- [DETR](families/detr/README.md)：集合预测、one-to-one matching、实时与开放词汇检测谱系，信息基线待本人审查；
 - [TuringViT](families/turingvit/README.md)：高分辨率图像/视频视觉编码器与 backbone，内容仍待本人验收。

@@ -22,6 +22,13 @@
 - **Commitment**：本工作包只激活身份、接口、静态 FP32 导出和数值一致性；不激活训练、COCO 任务精度、图简化、动态 shape、FP16/INT8、RKNN、海思或设备实验。独立仓库保持 `private / incubating / ip_review: pending`。
 - **Verification**：在关闭 Phase 3A 前，冻结完整解析依赖锁，从干净环境重新构建并重复 smoke，核对候选报告与原始哈希，再提交本人 `Accept / Revise / Reject / Escalate`。任务级 `|ΔmAP50-95| ≤ 0.001` 留作后续独立工作包。
 
+### 目标检测架构演变与 DETR 信息基线
+
+- **Problem**：现有仓库已经深入整理 YOLO，但“二阶段、单阶段、anchor-free、DETR、开放词汇”仍缺少统一且不误导的关系图，容易把模型年代、backbone 类型、候选表示和匹配方式混成单线升级叙事。
+- **Belief**：公开第一方论文支持把演变拆成候选生成、特征共享、监督匹配、输出选择和类别语义五条轴；DETR 应作为独立 detector family 维护，而不是继续塞进 YOLO 或泛化为所有 Transformer 检测器。
+- **Commitment**：本工作包只建立跨模型机制页、DETR 单页家族入口、registry 和必要导航；不激活统一训练、COCO 横评、模型下载、目标硬件、INT8、开放词汇业务采用或独立项目。
+- **Verification**：本人审查五条演变轴、DETR 家族边界、DINO 同名区分、第一方来源和工程选型问题；接受前保持 `working / partial / pending / medium`。后续只有在固定数据、训练、runtime 和硬件 Oracle 后，才激活 YOLO—DETR 受控比较。
+
 Phase 2 YOLO 工程证据完整性审查已于 2026-07-28 通过本人审查并关闭：本轮没有恢复出模型—配置—导出—运行—评测的完整链路，两篇历史案例继续保持 `working / unverified / pending / low`。本次接受只覆盖证据身份纠正、盘点边界、IP 门和未来验证合同，不验证历史指标、转换结果或板端行为；真实训练、转换和设备实验按独立工作包重新激活。
 
 YOLO family 信息审校已于 2026-07-27 通过本人审查；其条目继续保持 `working / partial / medium`，不因工程审查自动晋级。
@@ -39,7 +46,7 @@ YOLO family 信息审校已于 2026-07-27 通过本人审查；其条目继续�
 | **Self-supervised visual representation** | 需要判断监督预训练与 DINO 等自监督谱系的真实差异 | Meta DINO 与检测器 DINO 分开 |
 | **Vision-language alignment** | CLIP 类对齐或开放词汇能力进入真实视觉决策 | 区分模型谱系、训练方法与下游任务，不扩成通用 VLM 百科 |
 | **Video representation** | 单帧表征不足，且需要学习时空特征 | 不把跟踪关联、报警状态机或“使用视频”混成一个任务 |
-| **Detection / DETR** | 现有 YOLO 经验需要与集合预测或开放词汇检测比较 | 检测器 DINO 归 DETR 关系；通用 backbone 机制不重复 |
+| **Detection / DETR** | 固定任务、训练预算和目标硬件后，需要与 YOLO 做受控比较 | 架构演变与 DETR 信息基线已激活并待审查；检测器 DINO 归 DETR，自监督 DINO 分开；未激活训练或硬件结论 |
 | **2D landmark / keypoint localization** | 眼部等局部关键点方案需要可复现实验与选型 | 当前不承诺人体、动物或 3D pose 全域建设 |
 | **Multi-object tracking** | 逐帧检测无法满足身份连续性或轨迹需求 | 与视频表征、事件判定分别维护 |
 | **Temporal recognition and event decision** | 单帧状态不足以定义事件、触发或恢复 | 学习式时序识别/定位归任务知识；平滑、状态机、报警触发与恢复归 Engineering |
