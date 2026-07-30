@@ -15,13 +15,6 @@
 
 ## Active work
 
-### Phase 3A：YOLO11 PyTorch → ONNX 数值证据基线
-
-- **Problem**：建立第一条不依赖公司资产、可从固定公开来源复现的 YOLO 工程证据链，先回答静态 FP32 ONNX Runtime CPU 是否在 NMS 前保持固定 PyTorch 实现的输出。
-- **Belief**：私有独立仓库 [visionzoo/yolo11-onnx-evidence-baseline](https://github.com/visionzoo/yolo11-onnx-evidence-baseline) 的候选 run `smoke-001` 已记录固定源码、权重、输入、配置、ONNX 和环境身份；接口为 `[1, 84, 8400]`，当前数值门 `allclose(rtol=1e-4, atol=1e-5)` 通过。该结果尚未独立重复或经本人接受。
-- **Commitment**：本工作包只激活身份、接口、静态 FP32 导出和数值一致性；不激活训练、COCO 任务精度、图简化、动态 shape、FP16/INT8、RKNN、海思或设备实验。独立仓库保持 `private / incubating / ip_review: pending`。
-- **Verification**：在关闭 Phase 3A 前，冻结完整解析依赖锁，从干净环境重新构建并重复 smoke，核对候选报告与原始哈希，再提交本人 `Accept / Revise / Reject / Escalate`。任务级 `|ΔmAP50-95| ≤ 0.001` 留作后续独立工作包。
-
 ### DINO 自监督视觉表征方法族信息基线
 
 - **Problem**：仓库已经把自监督 DINO 与 DETR 检测器 DINO 分开命名，但仍缺少负责 DINO–DINOv3 方法谱系、数据/权重身份、backbone 关系和下游消费边界的权威条目；继续只写“使用 DINO/ViT 特征”会把学习方法、架构、预训练数据和 adapter 混成一个对象。
@@ -32,6 +25,8 @@
 MobileNet 架构族信息基线已通过 PR #19 合并；剩余范围审查由 family 页面和 registry 状态维护，不再占用 `Active work` 执行位。
 
 目标检测架构演变与 DETR 信息基线已通过 PR #17 / #18 合并；剩余的本人范围审查由 family 页面和 registry 状态维护，不再占用 `Active work` 执行位。
+
+Phase 3A YOLO11 PyTorch → ONNX 数值证据基线已于 2026-07-30 通过本人审查并关闭；独立仓库 [PR #1](https://github.com/visionzoo/yolo11-onnx-evidence-baseline/pull/1) 已合入 `main`。本次接受只覆盖固定公开资产、静态 FP32 导出、`[1, 84, 8400]` 接口、PyTorch/ONNX Runtime 数值门和只读输入边界；`smoke-004` 仍是同主机证据，不验证任务精度、跨主机复现、中间层、目标硬件、许可或公开发布。项目保持 `private / incubating / ip_review: pending`，Phase 3B 未激活。
 
 Phase 2 YOLO 工程证据完整性审查已于 2026-07-28 通过本人审查并关闭：本轮没有恢复出模型—配置—导出—运行—评测的完整链路，两篇历史案例继续保持 `working / unverified / pending / low`。本次接受只覆盖证据身份纠正、盘点边界、IP 门和未来验证合同，不验证历史指标、转换结果或板端行为；真实训练、转换和设备实验按独立工作包重新激活。
 
