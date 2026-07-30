@@ -24,10 +24,10 @@
 
 ### 目标检测架构演变与 DETR 信息基线
 
-- **Problem**：现有仓库已经深入整理 YOLO，但“二阶段、单阶段、anchor-free、DETR、开放词汇”仍缺少统一且不误导的关系图，容易把模型年代、backbone 类型、候选表示和匹配方式混成单线升级叙事。
-- **Belief**：公开第一方论文支持把演变拆成候选生成、特征共享、监督匹配、输出选择和类别语义五条轴；DETR 应作为独立 detector family 维护，而不是继续塞进 YOLO 或泛化为所有 Transformer 检测器。
-- **Commitment**：本工作包只建立跨模型机制页、DETR 单页家族入口、registry 和必要导航；不激活统一训练、COCO 横评、模型下载、目标硬件、INT8、开放词汇业务采用或独立项目。
-- **Verification**：本人审查五条演变轴、DETR 家族边界、DINO 同名区分、第一方来源和工程选型问题；接受前保持 `working / partial / pending / medium`。后续只有在固定数据、训练、runtime 和硬件 Oracle 后，才激活 YOLO—DETR 受控比较。
+- **Problem**：主干已经建立目标检测六轴演变图，但 DETR 仍缺少独立 family 入口、registry 身份、分支边界和与任务/机制条目的明确关系。
+- **Belief**：公开第一方论文支持把 DETR 作为 direct set prediction、object query、bipartite matching 和 task decoder 构成的独立 detector family，并关联候选空间、特征组织、监督分配、输出表示、结果选择和语义接口六个演变轴。
+- **Commitment**：本工作包复用主干既有机制页，只新增 DETR family、registry、必要导航和交叉引用；不重复维护跨模型演变事实，不激活统一训练、COCO 横评、模型下载、目标硬件、INT8、开放词汇业务采用或独立项目。
+- **Verification**：本人审查 DETR 家族边界、DINO 同名区分、第一方来源、工程选型问题，以及所有入口是否与六轴机制页一致；接受前保持 `working / partial / pending / medium`。后续只有在固定数据、训练、runtime 和硬件 Oracle 后，才激活 YOLO—DETR 受控比较。
 
 Phase 2 YOLO 工程证据完整性审查已于 2026-07-28 通过本人审查并关闭：本轮没有恢复出模型—配置—导出—运行—评测的完整链路，两篇历史案例继续保持 `working / unverified / pending / low`。本次接受只覆盖证据身份纠正、盘点边界、IP 门和未来验证合同，不验证历史指标、转换结果或板端行为；真实训练、转换和设备实验按独立工作包重新激活。
 

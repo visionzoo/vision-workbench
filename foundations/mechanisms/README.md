@@ -5,6 +5,6 @@
 当前条目：
 
 - [目标检测的核心因果链](object-detection-core.md)：输入、多尺度表征、标签分配、输出表示、decode 与结果选择；
-- [目标检测架构演变](object-detection-architecture-evolution.md)：候选生成、特征共享、匹配、结果选择和类别语义如何跨 R-CNN、dense detector、DETR 与开放词汇检测演变。
+- [目标检测架构演变](object-detection-architecture-evolution.md)：候选空间、特征组织、监督分配、输出表示、结果选择和语义接口六个轴如何跨 R-CNN、dense detector、DETR 与开放词汇检测演变。
 
 后续 MobileNet 用到的深度可分离卷积、宽度/深度缩放等内容，等真正开始 MobileNet 时再写。

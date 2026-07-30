@@ -37,7 +37,7 @@
 ## Current focus
 
 1. [YOLO](foundations/model-index/families/yolo/README.md)：理论知识链与证据边界已完成人工审查；现有海思与 RV1126B 记录仍是未验证候选，真实训练、转换和板端实验按独立工作包激活。
-2. [Object detection architecture evolution](foundations/mechanisms/object-detection-architecture-evolution.md) / [DETR](foundations/model-index/families/detr/README.md)：按候选、特征、匹配、结果选择和类别语义重建检测架构关系；公开第一方信息基线待本人审查。
+2. [Object detection architecture evolution](foundations/mechanisms/object-detection-architecture-evolution.md) / [DETR](foundations/model-index/families/detr/README.md)：按候选空间、特征组织、监督分配、输出表示、结果选择和语义接口六个轴组织跨架构关系；DETR 家族信息基线待本人审查。
 3. [Model quantization and accuracy alignment](engineering/diagnostics/model-quantization-accuracy-alignment.md)：诊断框架草稿，尚未独立验证。
 4. [Vision algorithm release and delivery](engineering/playbooks/vision-algorithm-release-and-delivery.md)：发布流程草稿，尚未独立验证。
 5. [DMS eye visibility and localization reliability](research/questions/dms-eye-visibility-and-localization-reliability.md)：研究问题草稿，尚未独立验证。
