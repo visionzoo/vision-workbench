@@ -15,12 +15,14 @@
 
 ## Active work
 
-### DINO 自监督视觉表征方法族信息基线
+### CLIP 图文对齐模型族信息基线
 
-- **Problem**：仓库已经把自监督 DINO 与 DETR 检测器 DINO 分开命名，但仍缺少负责 DINO–DINOv3 方法谱系、数据/权重身份、backbone 关系和下游消费边界的权威条目；继续只写“使用 DINO/ViT 特征”会把学习方法、架构、预训练数据和 adapter 混成一个对象。
-- **Belief**：Meta DINO 已形成独立 `method-family`：原始 DINO、DINOv2、register 扩展与 DINOv3 由自蒸馏、masked modeling、数据治理、蒸馏、Gram anchoring 等方法责任连接，但可落在 ViT、ConvNeXt、ResNet 或 XCiT 等不同架构上。
-- **Commitment**：本工作包只新增一个 `dino-self-supervised` family README、registry 和必要导航；领域 DINO、dino.txt、FINO、CHMv2 与第三方封装只建立关系，不新增机制页、任务页、训练项目、权重下载、跨论文排行榜、导出、量化或设备实验。
-- **Verification**：本人审查 method-family 边界、DINO/DINOv2/register/DINOv3 演变、论文—固定官方代码—动态 README 的来源责任、权重与许可、下游消费合同和停止维护规则；接受前保持 `working / partial / pending / medium`。
+- **Problem**：仓库已将 `vision-language alignment` 列为候选，并在比较契约中使用 CLIP image encoder 作为反例，但仍缺少负责 OpenAI CLIP 配对模型、checkpoint、prompt/taxonomy、图文接口和部署边界的权威条目；继续只写“使用 CLIP 特征”会把 OpenAI CLIP、OpenCLIP、SigLIP、图像编码器和完整 VLM 混为一个对象。
+- **Belief**：OpenAI CLIP 形成一个有固定官方 checkpoint 和配对接口的 `model-family`。它可以直接执行图文匹配/固定 taxonomy 零样本分类，也可拆出 image encoder 作为 visual encoder；但架构、文本编码器、预处理、tokenizer、prompt、checkpoint 和 similarity 必须共同确定身份。
+- **Commitment**：本工作包只新增一个 `clip` family README、registry 和必要导航；OpenCLIP、SigLIP、ALIGN、EVA-CLIP、MetaCLIP、DFN、prompt learning、开放词汇检测器和通用 VLM 只建立关系，不新增视觉语言总机制页、任务页、训练项目、权重下载、排行榜、导出、量化或设备实验。
+- **Verification**：本人审查 model-family 边界、九个 OpenAI checkpoint、图文输入输出合同、prompt/taxonomy 版本化、与 DINO/监督/OpenCLIP 的比较资格、model-card 使用边界、部署检查和停止维护规则；接受前保持 `working / partial / pending / medium`。
+
+DINO 自监督视觉表征方法族信息基线已通过 PR #21 合并；剩余范围审查由 family 页面和 registry 状态维护，不再占用 `Active work` 执行位。
 
 MobileNet 架构族信息基线已通过 PR #19 合并；剩余范围审查由 family 页面和 registry 状态维护，不再占用 `Active work` 执行位。
 
@@ -42,8 +44,8 @@ YOLO family 信息审校已于 2026-07-27 通过本人审查；其条目继续�
 | **Classification** | 出现图像、ROI 或帧状态分类的复用需求 | 区分闭集与开放词汇、单帧状态与时序事件；眼睛开闭等真实经验可进入 |
 | **Neck / feature fusion** | 多尺度或多层融合成为可区分变量 | 只维护中间特征转换与融合；不建立统一 Adapter 父项 |
 | **Task output representation** | 任务误差需要反推 head、decoder、loss、matcher 或解码选择 | 输出链路相邻不等于同一对象；任务特有事实回到具体任务 |
-| **Self-supervised visual representation** | 需要判断监督预训练与 DINO 等自监督谱系的真实差异 | DINO method-family 信息基线已激活；Meta DINO 与检测器 DINO 分开，真实训练和下游采用另行激活 |
-| **Vision-language alignment** | CLIP 类对齐或开放词汇能力进入真实视觉决策 | 区分模型谱系、训练方法与下游任务，不扩成通用 VLM 百科 |
+| **Self-supervised visual representation** | 需要判断监督预训练与 DINO 等自监督谱系的真实差异 | DINO method-family 信息基线已合并；真实训练和下游采用另行激活 |
+| **Vision-language alignment** | CLIP 类对齐或开放词汇能力进入真实视觉决策 | OpenAI CLIP model-family 信息基线已激活；CLIP-like 方法、开放词汇下游和通用 VLM 不并入同一版本树 |
 | **Video representation** | 单帧表征不足，且需要学习时空特征 | 不把跟踪关联、报警状态机或“使用视频”混成一个任务 |
 | **Detection / DETR** | 固定任务、训练预算和目标硬件后，需要与 YOLO 做受控比较 | 架构演变与 DETR 信息基线已合并并待审查；检测器 DINO 归 DETR，自监督 DINO 分开；未激活训练或硬件结论 |
 | **2D landmark / keypoint localization** | 眼部等局部关键点方案需要可复现实验与选型 | 当前不承诺人体、动物或 3D pose 全域建设 |

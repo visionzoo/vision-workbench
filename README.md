@@ -40,10 +40,11 @@
 2. [Object detection architecture evolution](foundations/mechanisms/object-detection-architecture-evolution.md) / [DETR](foundations/model-index/families/detr/README.md)：六轴跨架构关系与 DETR family 已建立；DETR 范围和内容仍待本人审查。
 3. [MobileNet](foundations/model-index/families/mobilenet/README.md)：v1–v4、官方实现、接口和硬件边界已经建立；当前等待本人范围审查，不自动激活实验。
 4. [DINO (self-supervised)](foundations/model-index/families/dino-self-supervised/README.md)：区分学习方法、backbone 架构、数据、权重与下游适配，建立 DINO–DINOv3 信息基线。
-5. [Model quantization and accuracy alignment](engineering/diagnostics/model-quantization-accuracy-alignment.md)：诊断框架草稿，尚未独立验证。
-6. [Vision algorithm release and delivery](engineering/playbooks/vision-algorithm-release-and-delivery.md)：发布流程草稿，尚未独立验证。
-7. [DMS eye visibility and localization reliability](research/questions/dms-eye-visibility-and-localization-reliability.md)：研究问题草稿，尚未独立验证。
-8. [TuringViT](foundations/model-index/families/turingvit/README.md)：作为视觉编码器与 backbone 纳入模型索引；当前只有第一方资料，代码、权重和独立复现仍缺失。
+5. [CLIP (OpenAI reference family)](foundations/model-index/families/clip/README.md)：建立配对图文模型、九个官方 checkpoint、prompt/taxonomy、接口和部署边界，不扩成 CLIP-like 模型百科。
+6. [Model quantization and accuracy alignment](engineering/diagnostics/model-quantization-accuracy-alignment.md)：诊断框架草稿，尚未独立验证。
+7. [Vision algorithm release and delivery](engineering/playbooks/vision-algorithm-release-and-delivery.md)：发布流程草稿，尚未独立验证。
+8. [DMS eye visibility and localization reliability](research/questions/dms-eye-visibility-and-localization-reliability.md)：研究问题草稿，尚未独立验证。
+9. [TuringViT](foundations/model-index/families/turingvit/README.md)：作为视觉编码器与 backbone 纳入模型索引；当前只有第一方资料，代码、权重和独立复现仍缺失。
 
 ## TODO
 

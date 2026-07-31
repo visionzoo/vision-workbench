@@ -95,6 +95,25 @@ families:
     authority_note: "论文定义方法主线；固定官方仓库和模型卡定义可加载 backbone、token/feature 接口、权重与许可。动态 README 中的领域项目和 post-hoc 适配只建立关系。"
     next_gate: "先审查方法边界、数据/权重/许可和停止维护规则；真实采用需固定 architecture、checkpoint、consumer、adaptation budget、runtime 与任务 Oracle 后比较。"
 
+  - id: clip
+    name: CLIP (OpenAI)
+    path: families/clip
+    entity_kind: model-family
+    usage_scopes: [complete-solution, reusable-module, pretraining-source]
+    module_roles: [visual-encoder]
+    learning_paradigms: [vision-language-alignment]
+    tasks: [classification]
+    system_contexts: []
+    relations: []
+    status: working
+    evidence_status: partial
+    structure_review: pending
+    content_review: pending
+    owner_use: not-confirmed
+    scope: "OpenAI 公开的九个配对图文 checkpoint 及其固定图像/文本/相似度接口；不把 OpenCLIP、SigLIP、ALIGN、EVA-CLIP、MetaCLIP、DFN、下游开放词汇系统或通用 VLM 混入。"
+    authority_note: "论文与 OpenAI model card 定义方法、数据披露和使用边界；固定 openai/CLIP revision 定义 checkpoint、preprocess、tokenizer、encoder 和 logit contract。"
+    next_gate: "先审查 family 边界、prompt/taxonomy 版本化、model-card 限制和停止维护规则；真实采用需固定 checkpoint、taxonomy、prompt、consumer、runtime 与任务 Oracle 后比较。"
+
   - id: turingvit
     name: TuringViT
     path: families/turingvit

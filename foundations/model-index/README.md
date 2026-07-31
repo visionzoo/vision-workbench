@@ -35,12 +35,12 @@
 
 | Entity kind | 含义 | 例子 |
 |---|---|---|
-| `model-family` | 以可追溯版本谱系维护的一组完整或近完整模型 | YOLO、DETR |
+| `model-family` | 以可追溯版本谱系维护的一组完整或近完整模型 | YOLO、DETR、OpenAI CLIP |
 | `architecture-family` | 主要由可复用结构机制和接口定义的架构谱系 | MobileNet、ResNet、HRNet、ViT、TuringViT |
 | `component-family` | 边界明确、可嵌入其他架构的组件谱系 | FPN、BiFPN |
 | `method-family` | 主要由训练、对齐、适配或推理方法定义的谱系 | 自监督 DINO、PEFT 方法 |
 
-例如，一个 architecture family 可以同时具有 `reusable-module` 和 `pretraining-source` 使用范围；一个 model family 是否能拆出可复用模块，需要由具体实现和关系证明，不能仅靠名称推定。DINO 这样的 method family 可以产生可复用 backbone 权重，但方法本身不因此获得 `backbone` 模块角色。
+例如，一个 architecture family 可以同时具有 `reusable-module` 和 `pretraining-source` 使用范围；一个 model family 是否能拆出可复用模块，需要由具体实现和关系证明，不能仅靠名称推定。DINO 这样的 method family 可以产生可复用 backbone 权重，但方法本身不因此获得 `backbone` 模块角色。CLIP 这样的配对 model family 可以拆出 image encoder 作为 visual encoder，但拆出后不自动保留文本对齐与零样本语义。
 
 ## Module roles
 
@@ -80,4 +80,5 @@ Classification 是与 detection、keypoint localization 等并列的任务；vis
 - [DETR](families/detr/README.md)：集合预测、one-to-one matching、实时与开放词汇检测谱系，信息基线待本人审查；
 - [MobileNet](families/mobilenet/README.md)：移动视觉架构谱系，维护 v1–v4、接口与硬件边界，信息基线待本人审查；
 - [DINO (self-supervised)](families/dino-self-supervised/README.md)：无标签自蒸馏与通用视觉表征方法谱系，维护 DINO–DINOv3、权重/数据/架构关系和下游消费边界；
+- [CLIP (OpenAI reference family)](families/clip/README.md)：配对图文模型族，维护九个官方 checkpoint、图文输入输出、prompt/taxonomy、使用与部署边界；
 - [TuringViT](families/turingvit/README.md)：高分辨率图像/视频视觉编码器与 backbone，内容仍待本人验收。
