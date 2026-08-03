@@ -9,6 +9,15 @@ public_entry:
     status: deferred
 
 projects:
+  - id: object-tracking-heatmap-baseline
+    repository: visionzoo/object-tracking-heatmap-baseline
+    visibility: private
+    status: incubating
+    source_topic: engineering/cases/object-tracking-heatmap-baseline.md
+    license: AGPL-3.0
+    ip_review: pending
+    last_reviewed: 2026-08-03
+
   - id: yolo11-onnx-evidence-baseline
     repository: visionzoo/yolo11-onnx-evidence-baseline
     visibility: private
@@ -23,5 +32,6 @@ projects:
 #   visibility: private
 #   status: incubating # incubating | validating | public | archived
 #   source_topic: engineering/diagnostics/example.md
+#   license: pending
 #   ip_review: pending
 #   last_reviewed: YYYY-MM-DD
