@@ -9,6 +9,7 @@
 
 当前入口：
 
+- [Object-tracking heatmap baseline](cases/object-tracking-heatmap-baseline.md)
 - [YOLO11n 局部目标到海思 INT8：候选记录](cases/yolo11n-local-target-hisi-int8.md)
 - [YOLO11 到 RV1126B RKNN INT8 对齐：候选记录](cases/yolo11-rv1126b-rknn-int8-alignment.md)
 - [Model quantization and accuracy alignment](diagnostics/model-quantization-accuracy-alignment.md)

@@ -5,9 +5,9 @@ type: playbook
 rigor: standard
 created: 2026-08-03
 updated: 2026-08-03
-confidence: low
-provenance: conversation-draft
-evidence_status: unverified
+confidence: medium
+provenance: conversation-draft; first-application at visionzoo/object-tracking-heatmap-baseline@6870134b06f144004dd945e4e356bf9a404029c9
+evidence_status: partial
 owner_review: pending
 ip_review: pending
 tags: [colab, github, notebook, project-intake, reproducibility]
@@ -18,7 +18,7 @@ related: [../../projects/registry.yaml, ../../governance/lifecycle.md, ../../gov
 
 ## Evidence boundary
 
-本条目把“在 Colab 调试视觉代码并保存到 GitHub”的需求整理为候选流程。它尚未用一次真实 Colab 保存、私有仓库创建、PR 合并和干净环境复现完成端到端验证，因此不能视为已经验证的平台操作说明。
+本条目把“在 Colab 调试视觉代码并保存到 GitHub”的需求整理为候选流程。2026-08-03 已用 [object-tracking heatmap baseline](../cases/object-tracking-heatmap-baseline.md) 完成固定公开上游、创建私有仓库、推送初始提交、母库登记和本机核心 smoke；尚未从 Colab 界面保存、在全新 Colab 运行时完整执行或走完项目 PR，因此仍不能视为已经验证的平台操作说明。
 
 ## Problem and success criteria
 
@@ -100,7 +100,7 @@ define visual problem and IP boundary
 
 ## Verification still required
 
-首次真实使用时应保存以下新鲜证据，再决定是否提高本条目状态：
+首次应用已覆盖私有仓库创建、敏感输出排除、上游/IP 边界、固定依赖、本机 smoke 和 registry 登记。仍需保存以下新鲜证据，再决定是否提高本条目状态：
 
 - Colab 保存到私有仓库分支的实际界面和权限行为；
 - notebook diff 检查记录及 secrets/IP 扫描结果；
