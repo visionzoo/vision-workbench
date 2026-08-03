@@ -26,7 +26,7 @@ families:
     usage_scopes: [complete-solution]
     module_roles: []
     learning_paradigms: [supervised]
-    tasks: [object-detection]
+    tasks: [object-detection, 2d-landmark-localization]
     system_contexts: []
     relations: []
     status: working
@@ -34,9 +34,9 @@ families:
     structure_review: accepted
     content_review: pending
     owner_use: confirmed
-    scope: "主要、可追溯的实时检测分支，不穷举所有带 YOLO 名称的项目。"
-    authority_note: "YOLOv3 之后没有覆盖全部分支的单一维护组织。"
-    next_gate: "完成两个真实工程案例、查询检查和本人内容验收后，再决定是否合并主干或建设下一个模型族。"
+    scope: "主要、可追溯的实时检测分支及其正式 pose 等任务扩展；不穷举所有带 YOLO 名称的项目，也不把 COCO pose 权重当作人脸关键点证据。"
+    authority_note: "YOLOv3 之后没有覆盖全部分支的单一维护组织；任务扩展必须绑定具体维护方、代码 revision、head、schema 和导出合同。"
+    next_gate: "YOLO 理论结构已验收；YOLO26 Pose 进入真实选型前需固定 custom keypoint schema、训练数据、export branch 与目标硬件。"
 
   - id: detr
     name: DETR
@@ -45,7 +45,7 @@ families:
     usage_scopes: [complete-solution]
     module_roles: []
     learning_paradigms: [supervised]
-    tasks: [object-detection]
+    tasks: [object-detection, 2d-landmark-localization]
     system_contexts: []
     relations: []
     status: working
@@ -53,9 +53,9 @@ families:
     structure_review: pending
     content_review: pending
     owner_use: not-confirmed
-    scope: "端到端集合预测及其多尺度、去噪、实时和开放词汇分支；不把所有 Transformer 检测器或自监督 DINO 混入。"
-    authority_note: "原始 DETR 由 Facebook AI Research 定义；后续分支来自不同组织，不存在覆盖全部谱系的单一官方实现。"
-    next_gate: "先完成人工范围审查，再选择固定实现，在同一任务、训练与目标硬件契约下和 YOLO 做受控比较。"
+    scope: "端到端集合预测及其多尺度、去噪、实时、开放词汇和 RF-DETR keypoint 扩展；不把所有 Transformer 检测/姿态模型或自监督 DINO 混入。"
+    authority_note: "原始 DETR 与后续分支来自不同组织；RF-DETR Keypoint 当前为 Roboflow Preview，不能作为全部 DETR family 的稳定 pose 接口。"
+    next_gate: "先审查 family 与 keypoint extension 边界；真实采用需固定实现、schema、matching/output、runtime 与任务 Oracle。"
 
   - id: mobilenet
     name: MobileNet
@@ -75,6 +75,44 @@ families:
     scope: "Google MobileNetV1–V4 及其第一方硬件分支；不把 ShuffleNet、GhostNet、EfficientNet、MobileOne、RepViT 或通用轻量网络混入。"
     authority_note: "论文定义架构主线；固定 TensorFlow Models revision 定义可定位官方实现。官方概览与代码可能不同步，不能只依赖摘要页判断版本完整性。"
     next_gate: "先审查家族边界、来源责任和停止维护规则；真实采用需固定实现、任务消费者、runtime 与目标硬件后进入受控比较。"
+
+  - id: pfld
+    name: PFLD
+    path: families/pfld
+    entity_kind: model-family
+    usage_scopes: [complete-solution]
+    module_roles: []
+    learning_paradigms: [supervised]
+    tasks: [2d-landmark-localization]
+    system_contexts: []
+    relations: []
+    status: working
+    evidence_status: partial
+    structure_review: pending
+    content_review: pending
+    owner_use: not-confirmed
+    scope: "论文定义的轻量 face-ROI direct-coordinate landmark family；不把所有 MobileNet 人脸关键点网络、社区 fork 或整图 pose 系统混入。"
+    authority_note: "论文与作者项目定义 PFLD 主线；公开 PyTorch/ONNX/NCNN 实现来自不同维护者，只负责自身结构、权重与转换。"
+    next_gate: "先审查 paper-vs-community 边界；真实采用需固定 point schema、ROI/preprocess、implementation、checkpoint、visibility contract 与目标硬件。"
+
+  - id: hrnet
+    name: HRNet
+    path: families/hrnet
+    entity_kind: architecture-family
+    usage_scopes: [reusable-module, pretraining-source]
+    module_roles: [backbone]
+    learning_paradigms: [supervised]
+    tasks: []
+    system_contexts: []
+    relations: []
+    status: working
+    evidence_status: partial
+    structure_review: pending
+    content_review: pending
+    owner_use: confirmed
+    scope: "并行多分辨率与重复融合的 HRNet architecture family；face-alignment heatmap 是具体组合，不把所有高分辨率网络或 heatmap 方法混入。"
+    authority_note: "HRNet 论文/组织定义架构；固定官方 facial-landmark revision 定义历史 W18 heatmap 实现，现代 MMPose 配置属于第三方组合。"
+    next_gate: "真实 DMS 比较需固定 HRNet variant、input/heatmap、loss、codec/decoder、visibility head、ROI 和目标硬件。"
 
   - id: dino-self-supervised
     name: DINO (self-supervised)

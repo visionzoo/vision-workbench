@@ -39,6 +39,18 @@ YOLO 没有覆盖全部版本的单一“总官方”。这里的正式分支只
 
 这张表说明去哪里查第一方定义，不表示已经由本人逐个复现。
 
+### YOLO26 Pose task extension
+
+`yolo26n/s/m/l/x-pose.pt` 属于 Ultralytics YOLO26 的正式 pose scales，其中 `yolo26x-pose` 是最大 scale，不是独立 family。固定源码 Y028 中：
+
+- `Pose26` 在 box/class head 之外增加每尺度 keypoint head；
+- 支持 one-to-many 与 one-to-one 分支；
+- keypoint schema 为 `(K, 2)` 或 `(K, 3)`，第三维表示关键点存在/可见 logit；
+- 训练期额外预测每点 `sigma_x/sigma_y` 并使用 RealNVP/RLE loss；
+- 标准 `fuse()` 会移除 sigma/flow 分支，因此推理输出不能自动解释为完整概率分布。
+
+官方 COCO 17 点权重只证明该 schema/数据上的第一方结果。自定义 DMS eye landmarks 必须重新训练并固定 `kpt_shape`、box class、数据、revision、export branch 和目标 hardware。完整任务合同见 [2D landmark localization](../../../tasks/2d-landmark-localization.md)，输出机制见 [Keypoint output representations](../../../mechanisms/keypoint-output-representations.md)。
+
 ## 3. 复现、迁移和芯片适配
 
 这些实现有工程价值，但只能定义自身改造，不能反过来定义上游模型。
