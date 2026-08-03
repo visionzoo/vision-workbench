@@ -2,13 +2,13 @@
 status: working
 type: model-index
 rigor: standard
-provenance: public-primary-papers-and-official-repositories
+provenance: public-primary-papers-official-repositories-and-pinned-preview-code
 evidence_status: partial
 owner_review: pending
 ip_review: not-applicable
 confidence: medium
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-03
 ---
 
 # DETR
@@ -30,7 +30,7 @@ image
 → optional encoder / projector / feature fusion
 → query initialization
 → task decoder
-→ per-query class / box outputs
+→ per-query task outputs
 → one-to-one set supervision
 → final prediction set
 ```
@@ -41,6 +41,7 @@ image
 - Deformable/real-time 分支通常重构多尺度特征交互；
 - 一些分支弱化或替换 encoder，只保留浅层 decoder；
 - open-vocabulary 分支把固定分类权重替换为文本或跨模态语义接口；
+- RF-DETR Keypoint Preview 把 matched instance query 扩展为 class-conditioned keypoint queries；
 - 实际 exporter/runtime 可能在图外保留 top-k、threshold、decode，甚至重新加入 NMS。
 
 ## 2. 核心范式改变
@@ -74,7 +75,8 @@ fixed queries
 | D-FINE | 提升实时 DETR 定位精度 | fine-grained distribution refinement + localization self-distillation | 分布式回归在目标 NPU 上零成本 |
 | Grounding DINO | 从闭集走向语言条件检测 | language-guided query selection、cross-modality decoder | 任意 prompt 都有稳定类别定义 |
 | OVLW-DETR | 开放词汇 DETR 的部署成本 | 文本类别 embedding 对齐与轻量 DETR | 文本编码器、词表和权重可跨实现混用 |
-| RF-DETR | 为目标数据域寻找 specialist accuracy-latency Pareto | 预训练 specialist detector + weight-sharing NAS | 2025 论文结果已被本人或目标硬件复现 |
+| RF-DETR | 为目标数据域寻找 specialist accuracy-latency Pareto | 预训练 specialist detector + weight-sharing NAS | 检测论文结果已被本人或目标硬件复现 |
+| RF-DETR Keypoint Preview | 从 matched instance 扩展到结构点、遮挡和不确定性 | GroupPose-style keypoint queries、findable/visible、Gaussian NLL | Preview 已形成稳定生产接口或适合边缘 NPU |
 
 表中的后续工作解决的是原始 DETR 暴露出的具体瓶颈。它们并不构成唯一主线，也不能只按发布日期视为全面替代。
 
@@ -89,20 +91,22 @@ query 是 decoder 的检测槽位及其内容/位置状态，不是“完全没�
 - explicit box coordinates；
 - encoder-selected proposal/query；
 - language-guided query；
-- denoising query（仅训练）。
+- denoising query（仅训练）；
+- matched instance 派生的 keypoint queries。
 
 需要核对 query 数、初始化、位置表示、逐层更新和 top-k 选择。query 数不足会限制最大输出容量；query 数增加也会增加 decoder 和 matching 成本。
 
 ### 4.2 Bipartite matching
 
-Hungarian matching 为每个 GT 选择唯一 prediction，未匹配 query 学习 no-object。matching cost 与最终 loss 不一定完全相同，通常组合类别与框代价。
+Hungarian matching 为每个 GT 选择唯一 prediction，未匹配 query 学习 no-object。matching cost 与最终 loss 不一定完全相同，通常组合类别与框代价；keypoint extension 还可能把位置、visibility 或结构成本加入匹配。
 
 它解决重复责任，但会引入：
 
 - 早期预测相近时的匹配切换；
 - small/crowded objects 的负责 query 不稳定；
 - no-object 比例和 loss 权重敏感；
-- auxiliary decoder loss 与最终层目标不完全一致。
+- auxiliary decoder loss 与最终层目标不完全一致；
+- keypoint cost 改变 instance assignment，导致框与点误差耦合。
 
 DN-DETR/DINO 的去噪训练说明，DETR 的训练效率不仅由 attention 决定，也由 matching 的优化稳定性决定。
 
@@ -141,10 +145,11 @@ training matcher
 | 通用闭集高精度 | DINO / Deformable 系 | 多尺度、query 初始化和去噪机制成熟 | 预训练数据、backbone、训练 schedule |
 | 实时闭集检测 | RT-DETRv2、LW-DETR、D-FINE、RF-DETR 候选 | 已直接优化 accuracy-latency 与部署 | 目标 runtime 算子、batch=1 latency、端到端链路 |
 | 开放词汇或短语 grounding | Grounding DINO / OVLW-DETR | 语言进入 query/decoder 或类别 embedding | prompt 定义、文本编码器、base/novel evaluator |
-| 资源受限边缘 NPU | 先做 operator viability，再与成熟 YOLO baseline 比较 | 论文 FLOPs 不能反映 attention/sampling 支持 | export graph、量化、内存、decoder 与后处理 latency |
+| 显式关键点遮挡/uncertainty 研究 | RF-DETR Keypoint Preview | findable/visible/二维 Gaussian 与 class-conditioned schema | Preview、custom data、matching、calibration、runtime |
+| 资源受限边缘 NPU | 先做 operator viability，再与成熟 YOLO/ROI baseline 比较 | 论文 FLOPs 不能反映 attention/sampling 支持 | export graph、量化、内存、decoder 与后处理 latency |
 | 拥挤或重复框问题 | one-to-one DETR 与 assignment/quality-aware dense detector 同时保留 | 问题可能来自 matching，也可能来自 score/NMS | crowd split、query capacity、result-selection 前后错误 |
 
-选择 DETR 不应从“Transformer 更先进”出发，而应从当前系统的候选、匹配、重复抑制、多尺度、语义和部署瓶颈出发。
+选择 DETR 不应从“Transformer 更先进”出发，而应从当前系统的候选、匹配、重复抑制、多尺度、语义、结构输出和部署瓶颈出发。
 
 ## 6. 与 YOLO 的有效比较
 
@@ -160,9 +165,68 @@ DETR 与 YOLO 只能在完整 detector 层级比较；不能把 `decoder` 与 `Y
 - 按 small/medium/large、crowd/occlusion、类别和域切片；
 - 记录导出成功率、算子 fallback、峰值内存、量化和稳定性。
 
-若无法对齐预训练或训练预算，只能得出“完整候选系统在该条件下的结果”，不能归因为 CNN、Transformer、one-stage 或 one-to-one 单一因素。
+若比较 pose/keypoint，还要固定 landmark schema、visibility 语义、instance boundary 和 OKS/NME/downstream Oracle。无法对齐预训练或训练预算时，只能得出“完整候选系统在该条件下的结果”。
 
-## 7. 工程排查入口
+## 7. RF-DETR Keypoint Preview
+
+### 7.1 身份与状态
+
+固定研究锚点：
+
+```text
+roboflow/rf-detr
+@ f50258b07d51efc23771a9418dc13f20de71866b
+RFDETRKeypointPreview
+```
+
+官方类名和文档均明确使用 `Preview`。当前可训练 custom square resolution，但 checkpoint、API、搜索空间和性能可能继续变化。基础 RF-DETR 检测论文不能单独证明 keypoint extension 的结构与指标；keypoint 事实必须回到 preview code/docs。
+
+### 7.2 GroupPose-style 结构
+
+```text
+instance query / matched detection embedding
+→ ConditionalQueryInitializer
+→ K class-conditioned keypoint queries
+→ keypoint decoder
+→ per-keypoint structured prediction
+```
+
+不同类别可定义不同数量的 keypoints；内部使用 padded layout，再按 target class 选择有效槽位。
+
+### 7.3 每点输出
+
+固定源码每个 keypoint slot 为 8 维：
+
+```text
+x, y,
+findable logit,
+visible logit,
+log Lxx, Lxy, log Lyy,
+class-logit contribution
+```
+
+`findable` 对应标注者能定位（`v>0`），`visible` 对应完全可见（`v==2`）。Cholesky 参数形成二维 Gaussian precision，参与面积归一化 NLL；源码显式处理 non-finite uncertainty，说明数值稳定是实际训练责任。
+
+### 7.4 能支持与不能支持
+
+能支持：
+
+- 同一模型内分开学习 findable 与 visible；
+- 对位置误差建模各向异性 uncertainty；
+- keypoint signal 进入匹配和类别判断；
+- 多类别不同 landmark schema。
+
+不能直接支持：
+
+- `visible` 等于 DMS `usable_for_eye_state`；
+- covariance 已 calibrated；
+- 官方 COCO OKS AP 能迁移到 IR eye12；
+- T4 TensorRT FP16 latency 能迁移到 RKNN/海思 INT8；
+- Preview 适合当前生产承诺。
+
+完整比较合同见 [2D landmark localization](../../../tasks/2d-landmark-localization.md) 与 [Keypoint output representations](../../../mechanisms/keypoint-output-representations.md)。
+
+## 8. 工程排查入口
 
 | 现象 | DETR 特有候选解释 | 首轮证据 |
 |---|---|---|
@@ -170,20 +234,22 @@ DETR 与 YOLO 只能在完整 detector 层级比较；不能把 `decoder` 与 `Y
 | 重复框 | 实际导出 head 不是 one-to-one、auxiliary branch 泄漏、top-k/score 解释错误 | raw per-query output、head identity、selection 前后结果 |
 | 框逐层漂移 | reference point/update、iterative refinement、坐标归一化或 sampling offset | 各 decoder layer boxes、reference points、首个分歧层 |
 | 小目标差 | 输入像素、feature level、sampling、query selection | 尺度切片、level contribution、采样位置 |
+| keypoint 不稳定 | instance matching 切换、keypoint query、class schema、covariance 发散 | matched instance ID、slot layout、findable/visible/NLL |
 | PC/板端差异 | attention/sampling/grid_sample、LayerNorm、softmax、量化、输出解释 | 固定输入、相同语义节点、算子 fallback、最终任务指标 |
 | 开放词汇不稳定 | prompt tokenization、text embedding、region-text alignment、词表缓存 | 固定 prompt、embedding hash、base/novel 和 synonym 测试 |
 
-通用输入、标签、输出和任务 Oracle 见 [目标检测](../../../tasks/object-detection.md)，跨检测器因果链见 [目标检测核心机制](../../../mechanisms/object-detection-core.md)。
+通用检测 Oracle 见 [目标检测](../../../tasks/object-detection.md)，关键点 Oracle 见 [2D landmark localization](../../../tasks/2d-landmark-localization.md)。
 
-## 8. 当前边界
+## 9. 当前边界
 
-- 本轮建立的是公开第一方证据支持的信息基线，没有统一训练、COCO 复测、目标硬件或 INT8 实验；
+- 本轮建立的是公开第一方证据支持的信息基线，没有统一训练、COCO/WFLW 复测、目标硬件或 INT8 实验；
 - RT-DETR、LW-DETR、D-FINE、RF-DETR 的论文速度不能跨硬件或跨实现直接比较；
+- RF-DETR Keypoint 的官方 benchmark 属厂商给定环境，不是本人复现；
 - Grounding DINO/OVLW-DETR 的开放词汇能力不能代表固定私有域的 prompt 稳定性；
-- 没有选择仓库的固定 DETR implementation revision，也没有确认目标 NPU 的算子支持；
-- 因此条目保持 `working / partial / pending / medium`，下一步应由本人先审查范围，再激活一个有任务与硬件 Oracle 的受控比较。
+- 没有确认目标 NPU 对 keypoint decoder/attention 的算子支持；
+- 因此条目保持 `working / partial / pending / medium`。
 
-## 9. 第一方来源
+## 10. 第一方来源
 
 | ID | Source | 主要责任 |
 |---|---|---|
@@ -199,5 +265,7 @@ DETR 与 YOLO 只能在完整 detector 层级比较；不能把 `decoder` 与 `Y
 | D010 | [Grounding DINO](https://arxiv.org/abs/2303.05499) / [official repository](https://github.com/IDEA-Research/GroundingDINO) | language-conditioned open-set detection |
 | D011 | [OVLW-DETR](https://arxiv.org/abs/2407.10655) | deployment-oriented open-vocabulary DETR |
 | D012 | [RF-DETR](https://arxiv.org/abs/2511.09554) / [official repository](https://github.com/roboflow/rf-detr) | specialist real-time DETR and weight-sharing NAS |
+| D013 | [Group Pose](https://arxiv.org/abs/2308.07313) | group-based keypoint queries relation |
+| D014 | [RF-DETR keypoint head @ f50258b0](https://github.com/roboflow/rf-detr/blob/f50258b07d51efc23771a9418dc13f20de71866b/src/rfdetr/models/heads/keypoints.py) / [Preview variant](https://github.com/roboflow/rf-detr/blob/f50258b07d51efc23771a9418dc13f20de71866b/src/rfdetr/variants.py) / [docs](https://rfdetr.roboflow.com/learn/run/keypoints/) | preview keypoint slot、loss/matching、API 与状态 |
 
-跨家族的架构演变、anchor-free/assignment 与开放语义关系见 [目标检测架构演变](../../../mechanisms/object-detection-architecture-evolution.md)。
+跨家族检测演变见 [目标检测架构演变](../../../mechanisms/object-detection-architecture-evolution.md)，关键点比较见 [DMS eye keypoint model selection](../../../../research/experiments/dms-eye-keypoint-model-selection.md)。

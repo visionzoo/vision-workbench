@@ -15,12 +15,14 @@
 
 ## Active work
 
-### CLIP 图文对齐模型族信息基线
+### DMS 2D landmark / keypoint research baseline
 
-- **Problem**：仓库已将 `vision-language alignment` 列为候选，并在比较契约中使用 CLIP image encoder 作为反例，但仍缺少负责 OpenAI CLIP 配对模型、checkpoint、prompt/taxonomy、图文接口和部署边界的权威条目；继续只写“使用 CLIP 特征”会把 OpenAI CLIP、OpenCLIP、SigLIP、图像编码器和完整 VLM 混为一个对象。
-- **Belief**：OpenAI CLIP 形成一个有固定官方 checkpoint 和配对接口的 `model-family`。它可以直接执行图文匹配/固定 taxonomy 零样本分类，也可拆出 image encoder 作为 visual encoder；但架构、文本编码器、预处理、tokenizer、prompt、checkpoint 和 similarity 必须共同确定身份。
-- **Commitment**：本工作包只新增一个 `clip` family README、registry 和必要导航；OpenCLIP、SigLIP、ALIGN、EVA-CLIP、MetaCLIP、DFN、prompt learning、开放词汇检测器和通用 VLM 只建立关系，不新增视觉语言总机制页、任务页、训练项目、权重下载、排行榜、导出、量化或设备实验。
-- **Verification**：本人审查 model-family 边界、九个 OpenAI checkpoint、图文输入输出合同、prompt/taxonomy 版本化、与 DINO/监督/OpenCLIP 的比较资格、model-card 使用边界、部署检查和停止维护规则；接受前保持 `working / partial / pending / medium`。
+- **Problem**：PFLD、HRNet heatmap、YOLO26x-pose 与 RF-DETR Keypoint 被作为候选提出，但它们分别是 face-ROI direct model、architecture+heatmap system、dense detector+pose 和 query/set Preview；仓库缺少统一任务、输出表征、visibility/usability、工程案例和 DMS 实验合同，直接比较论文 AP/NME 会混淆实例发现、backbone、head、数据和硬件。
+- **Belief**：先建立 `2D landmark task + output representation mechanism + PFLD/HRNet authority + YOLO/DETR task-extension relation + DMS experiment`，才能把公开事实与实际选型连接起来。第一阶段最有信息增益的是同一 ROI 下 PFLD direct regression 与 HRNet heatmap；YOLO26/RF-DETR 只在上游实例发现或显式 uncertainty 确实改变决策时进入训练。
+- **Commitment**：本工作包只建立信息与实验基线：任务页、机制页、PFLD/HRNet family、YOLO26 Pose/RF-DETR Keypoint 代码边界、真实工程案例与深度分析来源、统一数据/指标/Gate 0–4 协议。不下载权重、不接触未审查数据、不运行训练、导出、量化或设备实验，不制造四模型排行榜。
+- **Verification**：本人审查对象落位、第一方/第三方证据责任、findable/visible/usable 区分、PFLD/HRNet 优先顺序、YOLO/RF 触发条件、DMS 指标和采用/撤销门。接受前保持 `working / partial / protocol-only / pending`；具体数值门与数据/IP 边界由本人冻结后才启动实验。
+
+CLIP 图文对齐模型族信息基线已通过 PR #22 合并；剩余范围审查由 family 页面和 registry 状态维护，不再占用 `Active work` 执行位。
 
 DINO 自监督视觉表征方法族信息基线已通过 PR #21 合并；剩余范围审查由 family 页面和 registry 状态维护，不再占用 `Active work` 执行位。
 
@@ -43,12 +45,12 @@ YOLO family 信息审校已于 2026-07-27 通过本人审查；其条目继续�
 | **2. Visual feature extraction** | 需要在具体任务和硬件约束下选择或替换 backbone / visual encoder | MobileNet family 信息基线已合并；其它 architecture family 仍按真实需求启动。具体选型、训练、适配和硬件验证另行激活 |
 | **Classification** | 出现图像、ROI 或帧状态分类的复用需求 | 区分闭集与开放词汇、单帧状态与时序事件；眼睛开闭等真实经验可进入 |
 | **Neck / feature fusion** | 多尺度或多层融合成为可区分变量 | 只维护中间特征转换与融合；不建立统一 Adapter 父项 |
-| **Task output representation** | 任务误差需要反推 head、decoder、loss、matcher 或解码选择 | 输出链路相邻不等于同一对象；任务特有事实回到具体任务 |
+| **Task output representation** | 任务误差需要反推 head、decoder、loss、matcher 或解码选择 | 关键点 direct/heatmap/dense/query 表征基线已激活；其它任务按真实问题启动 |
 | **Self-supervised visual representation** | 需要判断监督预训练与 DINO 等自监督谱系的真实差异 | DINO method-family 信息基线已合并；真实训练和下游采用另行激活 |
-| **Vision-language alignment** | CLIP 类对齐或开放词汇能力进入真实视觉决策 | OpenAI CLIP model-family 信息基线已激活；CLIP-like 方法、开放词汇下游和通用 VLM 不并入同一版本树 |
+| **Vision-language alignment** | CLIP 类对齐或开放词汇能力进入真实视觉决策 | OpenAI CLIP model-family 信息基线已合并；CLIP-like 方法、开放词汇下游和通用 VLM 不并入同一版本树 |
 | **Video representation** | 单帧表征不足，且需要学习时空特征 | 不把跟踪关联、报警状态机或“使用视频”混成一个任务 |
-| **Detection / DETR** | 固定任务、训练预算和目标硬件后，需要与 YOLO 做受控比较 | 架构演变与 DETR 信息基线已合并并待审查；检测器 DINO 归 DETR，自监督 DINO 分开；未激活训练或硬件结论 |
-| **2D landmark / keypoint localization** | 眼部等局部关键点方案需要可复现实验与选型 | 当前不承诺人体、动物或 3D pose 全域建设 |
+| **Detection / DETR** | 固定任务、训练预算和目标硬件后，需要与 YOLO 做受控比较 | 架构演变与 DETR 信息基线已合并；RF-DETR Keypoint 只登记 Preview relation，未激活训练或硬件结论 |
+| **2D landmark / keypoint localization** | 眼部等局部关键点方案需要可复现实验与选型 | 任务/机制/模型/实验基线已激活；第一阶段只承诺 PFLD 与 HRNet 统一验证，不扩成人体、动物或 3D pose 百科 |
 | **Multi-object tracking** | 逐帧检测无法满足身份连续性或轨迹需求 | 与视频表征、事件判定分别维护 |
 | **Temporal recognition and event decision** | 单帧状态不足以定义事件、触发或恢复 | 学习式时序识别/定位归任务知识；平滑、状态机、报警触发与恢复归 Engineering |
 | **Segmentation** | 掩码相对检测框产生明确新增价值 | 语义、实例、可提示分割先区分任务，再建立关系 |

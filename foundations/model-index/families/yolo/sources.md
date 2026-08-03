@@ -1,6 +1,6 @@
 # Sources
 
-访问日期：2026-07-27。Source ID 让具体判断能回到原始资料。第一方只对对应分支和版本负责，不存在覆盖全部 YOLO 的统一官方。
+访问日期：2026-08-03。Source ID 让具体判断能回到原始资料。第一方只对对应分支和版本负责，不存在覆盖全部 YOLO 的统一官方。
 
 | ID | 分支/用途 | 第一方资料 |
 |---|---|---|
@@ -31,6 +31,7 @@
 | Y025 | RKNN Model Zoo | [repository](https://github.com/airockchip/rknn_model_zoo) |
 | Y026 | YOLOv5-Lite | [repository](https://github.com/ppogg/YOLOv5-Lite) |
 | Y027 | Ultralytics export | [export documentation](https://docs.ultralytics.com/modes/export/), [benchmark documentation](https://docs.ultralytics.com/modes/benchmark/) |
+| Y028 | YOLO26 Pose | [pose documentation](https://docs.ultralytics.com/tasks/pose/), [`Pose26` head at `81d076f8`](https://github.com/ultralytics/ultralytics/blob/81d076f8c38a49126cc1d5be369c8c107ec69789/ultralytics/nn/modules/head.py), [`PoseLoss26` at `81d076f8`](https://github.com/ultralytics/ultralytics/blob/81d076f8c38a49126cc1d5be369c8c107ec69789/ultralytics/utils/loss.py) |
 
 ## Y019 事实—来源边界
 
@@ -41,6 +42,16 @@
 | `reg_max=16`、训练 raw outputs、DFL/decode/sigmoid | 固定 revision 的 `Detect` 源码 | 该 revision 常规检测 head 的代码路径 | 某个导出文件是否包含相同步骤 |
 | TaskAlignedAssigner、BCE、box 与 DFL loss | 固定 revision 的 loss/assigner 源码 | 默认检测损失的实现事实 | 未记录配置的实际训练确实走了相同路径 |
 | COCO 指标、参数量和速度 | 在线模型文档 | 文档声明的环境与口径 | 本人数据、硬件、版本或端到端链路结果 |
+
+## Y028 事实—来源边界
+
+| 判断 | 直接来源 | 能支持 | 不能支持 |
+|---|---|---|---|
+| `yolo26x-pose.pt` 是官方 scale | 在线 pose/model docs | 当前官方命名与支持入口 | 自定义 eye schema 的精度与部署可用性 |
+| `Pose26` 有 one-to-many/one-to-one pose head | 固定 `head.py` | 该 revision 的 head 构造与输出 | 实际 export 保留哪条分支 |
+| 训练期预测每点 sigma 并使用 RealNVP/RLE | 固定 head/loss code | 训练 loss 与 sigma 路径 | 标准推理输出 calibrated uncertainty |
+| `fuse()` 移除 sigma/flow | 固定 head code | 默认融合后的推理结构 | 所有 exporter/tag 行为完全相同 |
+| COCO OKS AP 与 T4 latency | 在线文档 | 厂商声明的 COCO/硬件条件 | DMS IR、custom landmarks、目标 NPU 结果 |
 
 上表中的“不能支持”是证据边界，不表示相反结论已经成立。工程案例必须另外冻结自己的 package、配置、权重、导出和 runtime。
 
