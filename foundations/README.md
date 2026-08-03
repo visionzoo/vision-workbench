@@ -6,7 +6,7 @@
 - `tasks/`：任务输入、输出、指标和常见误差；
 - `model-index/`：某个模型族怎么选、怎么查官方资料、怎么落到工程上。
 
-当前已用 [YOLO](model-index/families/yolo/README.md) 把这三层跑通，并完成样板验收；[目标检测架构演变](mechanisms/object-detection-architecture-evolution.md) 与 [DETR](model-index/families/detr/README.md) 作为第二组检测知识基线，当前仍待本人审查。[MobileNet](model-index/families/mobilenet/README.md) 作为轻量移动视觉 architecture family 建立 v1–v4、接口与硬件边界；[DINO](model-index/families/dino-self-supervised/README.md) 作为 self-supervised method family 维护学习方法、数据、权重和架构关系，不与检测器 DINO 或 ViT family 混合。[TuringViT](model-index/families/turingvit/README.md) 作为高分辨率视觉编码器与 backbone 候选保留第一方信息基线。后续 family 仍按实际需要逐个建设，不批量铺目录。
+当前已用 [YOLO](model-index/families/yolo/README.md) 把这三层跑通，并完成样板验收；[目标检测架构演变](mechanisms/object-detection-architecture-evolution.md) 与 [DETR](model-index/families/detr/README.md) 作为第二组检测知识基线，当前仍待本人审查。[MobileNet](model-index/families/mobilenet/README.md) 作为轻量移动视觉 architecture family 建立 v1–v4、接口与硬件边界；[DINO](model-index/families/dino-self-supervised/README.md) 作为 self-supervised method family 维护学习方法、数据、权重和架构关系；[CLIP](model-index/families/clip/README.md) 作为 OpenAI 配对图文 model family 维护图文接口、prompt/taxonomy 与官方 checkpoint，不与通用 CLIP-like 谱系或完整 VLM 混合。[TuringViT](model-index/families/turingvit/README.md) 作为高分辨率视觉编码器与 backbone 候选保留第一方信息基线。后续 family 仍按实际需要逐个建设，不批量铺目录。
 
 ## 怎么使用
 
