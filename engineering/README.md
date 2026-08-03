@@ -13,3 +13,4 @@
 - [YOLO11 到 RV1126B RKNN INT8 对齐：候选记录](cases/yolo11-rv1126b-rknn-int8-alignment.md)
 - [Model quantization and accuracy alignment](diagnostics/model-quantization-accuracy-alignment.md)
 - [Vision algorithm release and delivery](playbooks/vision-algorithm-release-and-delivery.md)
+- [Colab to GitHub project intake](playbooks/colab-to-github-project-intake.md)
