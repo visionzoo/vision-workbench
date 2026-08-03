@@ -6,7 +6,7 @@ rigor: standard
 created: 2026-08-03
 updated: 2026-08-03
 confidence: medium
-provenance: independent-private-repo at 6870134b06f144004dd945e4e356bf9a404029c9; upstream-public-source at 81d076f8c38a49126cc1d5be369c8c107ec69789
+provenance: independent-private-repo at a1f939ad7c96cb01afc3ce4a0270dc29ae09529d; upstream-public-source at 81d076f8c38a49126cc1d5be369c8c107ec69789
 evidence_status: partial
 owner_review: pending
 ip_review: pending
@@ -24,7 +24,7 @@ related: [../playbooks/colab-to-github-project-intake.md, ../../projects/registr
 
 ## Provenance and IP boundary
 
-独立仓库为 [visionzoo/object-tracking-heatmap-baseline](https://github.com/visionzoo/object-tracking-heatmap-baseline)，当前是 private / incubating。初始提交固定为 `6870134b06f144004dd945e4e356bf9a404029c9`。
+独立仓库为 [visionzoo/object-tracking-heatmap-baseline](https://github.com/visionzoo/object-tracking-heatmap-baseline)，当前是 private / incubating。初始提交固定为 `6870134b06f144004dd945e4e356bf9a404029c9`，当前验证记录提交为 `a1f939ad7c96cb01afc3ce4a0270dc29ae09529d`。
 
 notebook 派生自 Ultralytics 公开仓库 revision `81d076f8c38a49126cc1d5be369c8c107ec69789` 的 [`examples/heatmaps.ipynb`](https://github.com/ultralytics/ultralytics/blob/81d076f8c38a49126cc1d5be369c8c107ec69789/examples/heatmaps.ipynb)。上游仓库在该 revision 使用 AGPL-3.0；项目保留同许可证、固定源链接、Git blob、下载哈希和修改说明，不声称拥有上游实现、模型、权重、样例视频、商标或文档。
 

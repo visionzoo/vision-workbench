@@ -6,7 +6,7 @@ rigor: standard
 created: 2026-08-03
 updated: 2026-08-03
 confidence: medium
-provenance: conversation-draft; first-application at visionzoo/object-tracking-heatmap-baseline@6870134b06f144004dd945e4e356bf9a404029c9
+provenance: conversation-draft; first-application at visionzoo/object-tracking-heatmap-baseline@a1f939ad7c96cb01afc3ce4a0270dc29ae09529d
 evidence_status: partial
 owner_review: pending
 ip_review: pending
