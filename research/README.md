@@ -19,4 +19,5 @@
 研究条目必须区分已有公开结论、工程观察和本人推断。当前入口：
 
 - [DMS eye visibility and localization reliability](questions/dms-eye-visibility-and-localization-reliability.md)：区分 findable、visible 与可用于眼状态判断；
-- [DMS eye keypoint model selection](experiments/dms-eye-keypoint-model-selection.md)：在统一 ROI、schema、split、预算和硬件合同下比较 PFLD、HRNet heatmap、YOLO26 Pose 与 RF-DETR Keypoint。
+- [DMS eye keypoint model selection](experiments/dms-eye-keypoint-model-selection.md)：在统一 ROI、schema、split、预算和硬件合同下比较 PFLD、HRNet heatmap、YOLO26 Pose 与 RF-DETR Keypoint；
+- [DMS degradation and enhancement validation](experiments/dms-degradation-and-enhancement-validation.md)：先验证受控退化训练，再判断高阶/学习式退化和推理增强是否在真实坏画质、语义安全与部署预算上提供额外价值。
