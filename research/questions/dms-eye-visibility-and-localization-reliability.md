@@ -4,14 +4,14 @@ status: working
 type: research-question
 rigor: standard
 created: 2026-07-25
-updated: 2026-08-03
+updated: 2026-08-11
 confidence: medium
 provenance: conversation-draft-plus-public-research-structure
 evidence_status: unverified
 owner_review: pending
 ip_review: pending
 tags: [dms, eye, visibility, keypoints, detection]
-related: [../experiments/dms-eye-keypoint-model-selection.md, ../../foundations/tasks/2d-landmark-localization.md, ../../foundations/mechanisms/keypoint-output-representations.md]
+related: [small-scale-eye-information-preservation-and-openness-measurement.md, ../experiments/upper-face-roi-information-preservation.md, ../experiments/dms-eye-keypoint-model-selection.md, ../../foundations/tasks/2d-landmark-localization.md, ../../foundations/mechanisms/keypoint-output-representations.md]
 ---
 
 # DMS eye visibility and localization reliability
@@ -19,6 +19,10 @@ related: [../experiments/dms-eye-keypoint-model-selection.md, ../../foundations/
 ## Evidence boundary
 
 本条目由历史对话重构，没有附带原始图像、标注规范、固定模型、日志或评测结果。公开文献能帮助建立竞争解释和实验合同，但不能验证用户数据上的结果。下列“观察”仍是待本人和 IP 审查的线索，不应被外推为 DMS 系统的一般事实。
+
+## Scope relationship
+
+本条目是 [R1](small-scale-eye-information-preservation-and-openness-measurement.md) 的 observability 子问题，只回答 findable、visible、usable 和定位可靠性。它不单独维护 ROI/重采样/网络分层的信息保真链，也不能用“关键点可用”代替连续开合度与部署验收。
 
 ## Research question
 

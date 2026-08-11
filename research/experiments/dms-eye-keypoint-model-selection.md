@@ -4,14 +4,14 @@ status: working
 type: research-experiment
 rigor: standard
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-11
 confidence: medium
 provenance: public-research-plus-user-problem-definition
 evidence_status: protocol-only
 owner_review: pending
 ip_review: pending
 tags: [dms, ir, eye, keypoint, pfld, hrnet, yolo26, rf-detr, visibility, deployment]
-related: [../questions/dms-eye-visibility-and-localization-reliability.md, ../../foundations/tasks/2d-landmark-localization.md, ../../foundations/mechanisms/keypoint-output-representations.md]
+related: [../questions/small-scale-eye-information-preservation-and-openness-measurement.md, ../questions/dms-eye-visibility-and-localization-reliability.md, upper-face-roi-information-preservation.md, ../../foundations/tasks/2d-landmark-localization.md, ../../foundations/mechanisms/keypoint-output-representations.md]
 ---
 
 # DMS eye keypoint model selection
@@ -19,6 +19,10 @@ related: [../questions/dms-eye-visibility-and-localization-reliability.md, ../..
 ## 1. Evidence boundary
 
 本文定义实验，不报告尚未运行的结果。用户历史信息表明目标场景包含 IR DMS、小尺寸眼部、侧脸、眼镜反光、模糊和遮挡，并且关键点用于后续闭眼/疲劳判断；但当前仓库未附原始图像、完整标签、固定模型、训练日志、runtime 或目标设备结果。任何结论必须由合法、可披露且通过 IP 审查的数据产生。
+
+## 1.1 Relationship to R1
+
+本实验是 [R1](../questions/small-scale-eye-information-preservation-and-openness-measurement.md) 的眼睑结构恢复与部署候选比较。它可以回答“在冻结 ROI 后怎样恢复结构”，但不能单独回答 ROI 为什么有效、信息首次在哪里受损，或检测收益是否已经转化为连续开合度；这些由 [upper-face ROI experiment](upper-face-roi-information-preservation.md) 与 R1 共同维护。
 
 ## 2. 决策问题
 

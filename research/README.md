@@ -18,6 +18,8 @@
 
 研究条目必须区分已有公开结论、工程观察和本人推断。当前入口：
 
+- [Small-scale eye information preservation and openness measurement](questions/small-scale-eye-information-preservation-and-openness-measurement.md)：R1，研究从 IR 成像、上半脸 ROI 和网络表征到眼睑结构、连续开合度与板端读出的信息保真边界；
+- [Upper-face ROI information preservation](experiments/upper-face-roi-information-preservation.md)：R1 首轮实验，分离尺度、上下文、搜索空间、位置先验和 ROI 扰动的贡献；
 - [DMS eye visibility and localization reliability](questions/dms-eye-visibility-and-localization-reliability.md)：区分 findable、visible 与可用于眼状态判断；
 - [DMS eye keypoint model selection](experiments/dms-eye-keypoint-model-selection.md)：在统一 ROI、schema、split、预算和硬件合同下比较 PFLD、HRNet heatmap、YOLO26 Pose 与 RF-DETR Keypoint；
 - [DMS degradation and enhancement validation](experiments/dms-degradation-and-enhancement-validation.md)：先验证受控退化训练，再判断高阶/学习式退化和推理增强是否在真实坏画质、语义安全与部署预算上提供额外价值。
