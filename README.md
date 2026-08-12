@@ -40,7 +40,7 @@
 2. [Object detection architecture evolution](foundations/mechanisms/object-detection-architecture-evolution.md) / [DETR](foundations/model-index/families/detr/README.md)：六轴跨架构关系与 DETR family 已建立；RF-DETR Keypoint 只作为 Preview task extension 维护。
 3. [2D landmark / keypoint localization](foundations/tasks/2d-landmark-localization.md) / [Output representations](foundations/mechanisms/keypoint-output-representations.md)：统一 ROI/整图系统、坐标链、visibility/usability 与 direct regression、heatmap、dense pose、query/set prediction 的比较合同。
 4. [PFLD](foundations/model-index/families/pfld/README.md) / [HRNet](foundations/model-index/families/hrnet/README.md)：分别建立轻量 face-ROI coordinate model 与并行多分辨率 architecture/heatmap 基线；真实 DMS 选型进入统一实验。
-5. [DMS eye keypoint model selection](research/experiments/dms-eye-keypoint-model-selection.md)：先比较 PFLD 与 HRNet heatmap；YOLO26 Pose 和 RF-DETR Keypoint 仅在实例发现或显式 uncertainty 改变决策时激活训练。
+5. [Small-scale eye information preservation and openness measurement](research/questions/small-scale-eye-information-preservation-and-openness-measurement.md)：当前唯一主追研究问题；先用 [upper-face ROI experiment](research/experiments/upper-face-roi-information-preservation.md) 分离尺度、上下文、搜索空间、位置先验和 ROI 误差，[keypoint model selection](research/experiments/dms-eye-keypoint-model-selection.md) 作为眼睑结构恢复的支撑实验。
 6. [MobileNet](foundations/model-index/families/mobilenet/README.md)：v1–v4、官方实现、接口和硬件边界已经建立；当前等待本人范围审查，不自动激活实验。
 7. [DINO (self-supervised)](foundations/model-index/families/dino-self-supervised/README.md)：区分学习方法、backbone 架构、数据、权重与下游适配，建立 DINO–DINOv3 信息基线。
 8. [CLIP (OpenAI reference family)](foundations/model-index/families/clip/README.md)：建立配对图文模型、九个官方 checkpoint、prompt/taxonomy、接口和部署边界，不扩成 CLIP-like 模型百科。

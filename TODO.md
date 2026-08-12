@@ -15,7 +15,16 @@
 
 ## Active work
 
+### R1: Small-scale eye information preservation and openness measurement
+
+- **Problem**：现有眼睛检测、关键点、闭眼分类、质量门控、输入色彩链路和板端对齐仍是分散工作；“检测到眼睛”不能证明眼睑结构足以支持连续开合度，也无法区分原始信息不足、ROI/采样损失、表征削弱、监督未利用和最终读出失败。
+- **Belief**：历史“人脸 ROI → 上半脸裁剪 → resize → YOLOv8 眼部检测”同时改变有效眼像素、上下文、搜索空间和位置先验。先分离这些因素，再把定位连接到眼睑结构、openness、UNKNOWN 与部署一致性，才能形成可靠工程核心和可迁移机制认识。
+- **Commitment**：R1 是当前唯一主追研究问题；首轮只运行 upper-face ROI 信息保真实验。YOLO26 是现代整机观察锚点，现有 keypoint 选型是支撑工作；不扩为完整疲劳状态机、YOLO 教程或所有小目标研究，不下载未审查数据、不训练新模型、不冻结生产阈值。
+- **Verification**：先通过语义合同、变换正确性、分组复现、竞争解释区分和单变量归因；只有定位收益能够进入眼睑结构、连续开合度与 UNKNOWN，并在受控实验、真实 DMS 和 PC/目标端形成有边界的双层证据，才允许形成 finding。一次 AP 提升不能关闭 R1。
+
 ### DMS 2D landmark / keypoint research baseline
+
+本工作包是 R1 的眼睑结构恢复与部署候选支撑，不替代 R1 对 ROI、采样、信息保真和连续开合度的因果研究。
 
 - **Problem**：PFLD、HRNet heatmap、YOLO26x-pose 与 RF-DETR Keypoint 被作为候选提出，但它们分别是 face-ROI direct model、architecture+heatmap system、dense detector+pose 和 query/set Preview；仓库缺少统一任务、输出表征、visibility/usability、工程案例和 DMS 实验合同，直接比较论文 AP/NME 会混淆实例发现、backbone、head、数据和硬件。
 - **Belief**：先建立 `2D landmark task + output representation mechanism + PFLD/HRNet authority + YOLO/DETR task-extension relation + DMS experiment`，才能把公开事实与实际选型连接起来。第一阶段最有信息增益的是同一 ROI 下 PFLD direct regression 与 HRNet heatmap；YOLO26/RF-DETR 只在上游实例发现或显式 uncertainty 确实改变决策时进入训练。
