@@ -4,7 +4,7 @@ status: working
 type: research-experiment
 rigor: standard
 created: 2026-08-03
-updated: 2026-08-11
+updated: 2026-08-12
 confidence: medium
 provenance: public-research-plus-user-problem-definition
 evidence_status: protocol-only
@@ -366,3 +366,20 @@ engineering:
 - 下游指标证明关键点不是主要误差源。
 
 失败结果仍需记录，不因不好看而删除。
+
+
+## 15. 2026-08-12 artifact intake
+
+外部工作区的只读核查确认 PFLD、HRNet、eye12 数据准备、对齐输入、训练运行和统一比较器均已有实现制品，但这些制品尚不能把本实验从 `protocol-only` 晋级：
+
+- 最新可见的统一对比早于后续 aligned runs，不能代表当前对齐合同；
+- aligned runs 没有留下同时满足完成状态、冻结 checkpoint、统一 test manifest 和新鲜比较结果的闭环；
+- 现有汇总中出现极端异常的 relative NME 与 EAR，足以污染整体和部分 slice 均值。当前不能确定原因属于点位映射、无效眼宽、标注转换还是评价器数值处理；
+- 数据源以公开人脸关键点集为主，尚不能替代按 driver/video/camera 分组的真实 DMS Oracle，也不能验证 `usable_for_eye_state` 与 UNKNOWN。
+
+因此，本轮只接受“实现存在”和“评价链需要修复”两项观察，不接受 PFLD/HRNet 排名。下一次允许比较前必须：
+
+1. 为 evaluator 增加点位顺序、mirror map、有限值、最小 eye width、无效样本去向和合成完美预测测试；
+2. 固定 aligned dataset manifest、两组 checkpoint、代码 revision 与运行完成状态；
+3. 重新生成 overall、dataset、eye-size、EAR、brightness 和 blur 分组结果，并报告被拒样本；
+4. 由 owner/IP review 决定哪些聚合结果和证据指针可以进入本仓库。
