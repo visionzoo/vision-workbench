@@ -4,10 +4,10 @@ status: working
 type: diagnostic
 rigor: standard
 created: 2026-08-06
-updated: 2026-08-06
-confidence: low
-provenance: conversation-draft
-evidence_status: unverified
+updated: 2026-08-12
+confidence: medium
+provenance: internal-document-and-source-review
+evidence_status: partial
 owner_review: pending
 ip_review: pending
 tags: [ir-camera, nv12, nv21, yuv, isp, ahd, video-replay, diagnostics]
@@ -18,9 +18,177 @@ related: [model-quantization-accuracy-alignment.md]
 
 ## Evidence boundary
 
-本条目由一次 IR 摄像头、报警视频回灌和 NV12 输入异常排查对话抽象而来。当前没有导入原始 NV12、相机规格书、ISP/AHD 寄存器、连续日志、视频注入盒子实测数据或多设备统计，因此下文保存的是**候选问题结构、区分实验和运行时诊断合同**，不是已验证的相机结论或生产阈值。
+本条目由 IR 摄像头、报警视频回灌和 NV12 输入异常排查对话抽象而来，并在 2026-08-12 综合了《DMS 输入图像对齐》内部文档、Hi3519 媒体服务目标分支的只读源码审查以及设备侧模块观察。源码审查可以确认软件配置意图和模块连接，但不能替代板端返回值、帧元数据、原始字节和算法张量实测；内部文档中的图示、判断表和数据集颜色统计仍属于项目观察，不是独立 Oracle。
 
-内容只保留可迁移的视频链路知识，不记录客户、供应商、设备型号、内部库实现或可反推具体项目的参数。公开或晋级前必须完成独立实验和 IP 审查。
+当前没有导入原始 NV12、TP2856 完整数据手册/寄存器表、驱动源码、连续日志、视频注入盒子实测数据或多设备统计。因此本文状态仍为 `working`、`owner_review: pending`、`ip_review: pending`。内容只记录理解和复现链路所必需的模块合同，不复制公司源码、内网链接、数据路径或客户信息；公开、晋级或提取到公共项目之前必须完成独立实验和 IP 审查。
+
+### Evidence register
+
+| Evidence | What it currently supports | Boundary |
+|---|---|---|
+| Hi3519 媒体服务目标分支源码审查 | TP2856 用户态接口、VI/PSFM/VPSS 连接、算法/存储通道属性、VENC 和通用 MP4 封装意图 | 未在目标板复核全部 MPI 返回值、通道分配和运行时帧属性 |
+| 《DMS 输入图像对齐》2026-08-12 版本 | DMS 模块拆解、直接解码/盒子回灌判定矩阵、训练—部署核对项、数据集颜色分布观察 | 内部文档；部分表格尚未填完，统计缺少独立复算记录 |
+| 设备侧观察：`/proc/modules` 出现 `ot_tp2856` | TP2856 是已加载的独立内核模块，而非内建驱动 | 当前条目未保存原始命令输出、模块版本和加载脚本 |
+| OpenCV+FFmpeg 回放说明 | 当前 MP4 直接解码入口和待核对假设 | 仍需保存 OpenCV build information、实际 `Mat` 类型和下游调用证据 |
+| 指定的另一段 ChatGPT 对话 | 据称包含 TP2856 对应测试 | 当前链接需要登录态，正文尚未导入，不能吸收或引用其结论 |
+
+## Source-supported platform chain and module boundaries
+
+下图是目标分支 `devlop-v2.0.2.x` 源码支持的**平台实现图**。它比概念图更严格地划分了驱动、媒体处理、存储和算法边界：
+
+```mermaid
+flowchart LR
+    A[模拟 AHD 视频] --> B[TP2856<br/>模拟接收与硬件解码]
+    K[系统启动脚本] -->|加载 .ko| D[ot_tp2856 内核模块]
+    D --> N["/dev/tp2802dev"]
+    M[媒体服务] -->|open + ioctl| N
+    M -->|配置制式/分辨率/MIPI 模式| B
+    B -->|MIPI CSI-2 YUV422| C[Hi3519 MIPI RX / VI<br/>ISP bypass]
+    C --> X{输入组织方式}
+    X -->|普通 VC / pipe| G[VPSS Group]
+    X -->|伪单帧复用| P[PSFM 拆帧]
+    P --> G
+    G --> S[独立 VPSS 存储通道]
+    G --> I[独立 VPSS 算法通道]
+    S --> V[Hi3519 VENC<br/>H.264 Annex-B]
+    V --> Q[共享压缩流]
+    Q --> R[录像服务/索引]
+    Q --> U[MP4 mux<br/>H.264 + 可选音频]
+    I --> Y[算法 YUV 帧出口]
+    Y --> AIPP[AIPP<br/>CSC + resize + tensor preprocessing]
+    AIPP --> ALG[DMS models + FSM]
+```
+
+### Driver and media-service boundary
+
+- `ot_tp2856` 是内核模块；驱动加载不在媒体服务源码中完成。媒体服务启动前，系统必须已经加载模块并创建 `/dev/tp2802dev`。
+- 媒体服务打开该设备节点，通过 ioctl 查询信号/制式，并按通道配置 HDA、720p/1080p、刷新率和 MIPI 输出模式。
+- `/dev/tp2802dev` 是沿用 TP2802 系列用户态 ABI 的节点名，不能据此推断实际芯片不是 TP2856。
+- 当前用户态代码在 `open` 失败时主要记录日志，没有建立强制启动门；因此“媒体进程存活”不能作为驱动可用 Oracle。必须同时检查设备节点、ioctl 返回值和 MIPI/VI 是否持续出帧。
+
+### TP2856 test evidence intake
+
+尚未导入的 TP2856 测试不能只记录“正常/异常”结论。每组测试至少补齐：
+
+| Field | Required evidence |
+|---|---|
+| Environment | 板卡/固件、`ot_tp2856` 模块版本、媒体服务版本、温度与供电 |
+| Input | 信号源、AHD 制式、分辨率、FPS、线缆/注入方式、标准测试图或真实片段 |
+| Driver configuration | channel、mode、standard、MIPI output，以及相关 ioctl 返回值；寄存器仅在权属允许时保存摘要 |
+| Capture checkpoints | TP2856/MIPI YUV422、VI/PSFM、存储 VPSS、算法 VPSS、AIPP 后 tensor 中能取得的最早检查点 |
+| Image contract | packing、width/height、stride、UV/VU、matrix/range、crop/scale、mirror/flip、compression |
+| Time contract | PTS、实测 FPS、失锁/重锁、重复/丢帧及首次稳定帧 |
+| Oracle | 色条/灰阶的数值误差、几何坐标、模型 raw output 与 FSM，而非“肉眼正常” |
+| Conclusion boundary | 当前排除/支持了什么，哪些替代解释仍存活 |
+
+对话导出后，应把每个 TP2856 测试映射到该表，并链接合法保存的原始输出；没有环境和原始观测的聊天结论只能保留为 hypothesis。
+
+### What “RAW” means in this path
+
+TP2856 已经在芯片内部完成模拟视频接收和解码，向 Hi3519 输出的是数字 YUV422，而不是 Bayer RAW。VI 的某些 “raw timing” 路径使用 Bayer/packed-YUV 相关枚举承载时序或打包数据，这是接口配置手段，不能把该数据解释成传感器 Bayer 图像，也不意味着后续运行完整 ISP Bayer pipeline。
+
+TP2856 内部究竟使用哪套均衡、AHD 解调、亮色分离、色彩矩阵、range 和寄存器系数，当前源码无法证明。需要后续核查 `ot_tp2856` 驱动寄存器表或原厂完整数据手册；在此之前只能确定“硬件模拟视频解码后输出 YUV422”，不能给内部 DSP 方法下更细结论。
+
+### Ordinary VI and PSFM variants
+
+- 普通输入以 MIPI 虚拟通道进入各 VI pipe，再绑定对应 VPSS group。
+- 部分复用输入使用带通道头和可变行的伪单帧格式；PSFM 根据头字段恢复通道，再输出 YVU420SP 给独立 VPSS group。
+- 两种组织方式最终都应在 VPSS 输出边界统一验证：不能因为上游 pipe 使用了不同 timing/枚举，就在算法层假定颜色和内存合同相同。
+
+## VPSS fork: storage and algorithm are sibling paths
+
+存储流和算法流不是串行关系。它们从同一个 VPSS group 申请不同的物理通道，各自设置分辨率、帧率、像素格式和压缩属性：
+
+```mermaid
+flowchart LR
+    G[VPSS Group] --> SC[Storage VPSS channel]
+    G --> AC[Algorithm VPSS channel]
+    SC -->|YVU420SP / NV21 by default| VE[VENC]
+    VE --> H[H.264 / MP4]
+    AC -->|bilinear + YUV420SP / NV12 intent| EX[frame export]
+    EX --> AP[AIPP]
+```
+
+| Contract | Storage channel | Algorithm YUV channel |
+|---|---|---|
+| Channel ownership | VENC pipe 独立申请物理 VPSS channel | YUV share pipe 独立申请物理 VPSS channel |
+| Size | 编码 profile 的分辨率 | 算法 YUV profile 的分辨率 |
+| Scale coefficient | 当前编码管线未显式启用算法侧双线性设置 | 显式启用双线性设置 |
+| Default pixel format | YVU semiplanar 420，即 NV21（Y + VU） | 双线性分支把目标格式设为 YUV semiplanar 420，即 NV12（Y + UV） |
+| Consumer | Hi3519 VENC | 共享 YUV 取帧接口，再进入 AIPP |
+| Key verification | VENC 输入帧属性和实际录像解码 | `video_frame.pixel_format`、stride、压缩模式和 UV 字节探针 |
+
+VPSS channel attribute 中的 `pixel_format` 是**目标图像格式**。因此在 `set_chn_attr` 成功后，随后由 VPSS 产生的输出 Buffer 应按 NV12 写入，而不是只把既有 NV21 Buffer 改名。双线性缩放本身并不天然完成 NV21→NV12；当前实现是在同一条件分支中同时选择双线性系数和 NV12 目标格式。这个结论仍需用 MPI 返回值、返回帧的 `pixel_format` 和字节 dump 三重验证。
+
+另有一个必须单独关闭的风险：物理 VPSS channel 0/1 默认可能使用 segment compression，而高编号通道改为无压缩；算法当前按线性 `stride × height × 3/2` 映射帧。若运行时动态分配到压缩通道，单看 `pixel_format` 不足以证明 Buffer 可按线性 NV12 读取。必须记录实际 group/channel、`compress_mode`、`video_format`、两个平面地址与 stride，或显式保证算法通道无压缩。
+
+### Resolution of the initial YVU/NV12 discrepancy
+
+内部文档早期根据 VENC/媒体状态把“0～7 路媒体输出为 YVU420SP”与“AIPP 声明 YUV420SP”直接比较，得到算法输入不一致的候选判断。源码审查表明这个比较混合了两个不同 VPSS channel：VENC 状态只能说明**存储编码通道**的输入合同，不能证明**算法共享通道**仍是 NV21。算法通道在创建时显式进入双线性分支，并把目标格式改为 NV12。
+
+因此当前应撤销“仅根据 VENC 状态就修改 AIPP UV swap”的行动依据。正确判断顺序是：
+
+1. 记录算法实际分配到的 VPSS group/channel；
+2. 检查该 channel 的 set-attribute 返回值和 get-attribute 结果；
+3. 检查返回帧的 pixel/compress/video format、stride 和 plane 地址；
+4. 对中性色块或已知色条做 UV 字节探针；
+5. 比较 AIPP 后 RGB/BGR tensor，而不是只看最终渲染图。
+
+只有这些证据证明算法收到 VU 数据却按 UV 解释时，才允许改变 swap 或输入格式声明。
+
+## Encoding, MP4 and alarm-recording boundary
+
+当前目标分支的存储视频 profile 固定进入 H.264 硬件编码路径；分辨率、FPS、码率控制和 GOP 必须以实际设备配置为准。VENC 从独立 VPSS 存储通道取 YUV420SP，输出包含 SPS/PPS/IDR/P 的 Annex-B 码流。H.264 压缩由 Hi3519 VENC 完成；将压缩视频与音频写入 MP4 是 mux，不是再次编码。
+
+源码中可以确认一个通用 MP4 打包器会：等待首个含 SPS 的 I 帧、建立 H.264 track、写入 SPS/PPS、把 Annex-B 起始码改为 MP4/AVCC 的 NAL 长度前缀，再写 sample；音频路径可添加 G.711 A-law track。当前代码集合不含录像服务主体，因此尚不能证明报警录像落盘是否直接调用这个打包器、分片长度、预录缓存实现，以及报警究竟是复制文件、保护已有分片还是只写索引。应把“VENC 编码方法已确认”和“报警存储策略待查”分开。
+
+## Algorithm image modules and dependency chain
+
+“DMS 算法”不是单一模型。图像输入差异会沿 ROI 和时序依赖传播：
+
+```mermaid
+flowchart LR
+    F[Algorithm input frame] --> FD[Face / object detector]
+    FD --> FR[Face ROI geometry]
+    FR --> KP[Facial keypoints]
+    FR --> HP[Head-pose model]
+    KP --> ER[Eye ROI crop]
+    ER --> EC[Eye-state classifier]
+    FD --> O[Other object states]
+    KP --> FSM[DMS temporal FSM]
+    HP --> FSM
+    EC --> FSM
+    O --> FSM
+```
+
+因此“某个旧眼部模型看起来不受偏色影响”不能推出输入链路正确：关键点偏移会先改变眼部 ROI，分类器随后接收到的已经不是同一裁剪。需要按依赖顺序保留中间证据，而不是只比较最终报警。
+
+| Module | Image contract to freeze | Intermediate Oracle |
+|---|---|---|
+| Face/object detection | 整帧有效区域、resize/letterbox、RGB/BGR/灰度、归一化、量化 | 输入 tensor hash/统计、框坐标、raw score |
+| Keypoints | face ROI 坐标系、crop 边界、插值、通道和 normalization | ROI 图、关键点坐标和置信度 |
+| Head pose | ROI 定义、角度约定、镜像状态、前处理 | 输入 ROI、连续角和阈值前输出 |
+| Eye-state classification | eye ROI 来源、左右眼顺序、crop padding、灰度/彩色、resize | 左右眼 ROI、logit/probability |
+| FSM/alarm | PTS、实际 FPS、重复/丢帧、阈值、持续时间 | 每帧状态、计数器、状态迁移原因 |
+
+内部文档中的训练集统计显示，不同子模型的数据颜色分布可能显著不同：关键点/头姿数据可能包含更强彩色偏置，而部分眼部分类数据更接近灰度。该观察提示模型通道敏感性可能不同，但不能直接解释板端异常；晋级前必须在合法、可复算的数据快照上重新统计，并分别做 RGB/BGR、Y-only、通道置换和统一 normalization 的控制实验。
+
+## Training-to-board preprocessing contract
+
+对每个模型必须填满下面的合同，空项即阻塞“已经对齐”的结论：
+
+| Stage | Required fields |
+|---|---|
+| Training decode | decoder/version、EXIF orientation、RGB/BGR/gray、alpha handling |
+| Training geometry | source ROI、crop/pad/letterbox、target size、interpolation、rounding |
+| Training tensor | layout、dtype、channel order、scale、mean/std、value range |
+| Model conversion | declared input format、static/dynamic AIPP、quantization calibration input |
+| VPSS export | group/channel、width/height、pixel format、stride、compress/video format、crop、mirror/flip |
+| AIPP CSC | NV12/NV21 interpretation、BT.601/709、full/limited range、CSC coefficients/offsets |
+| AIPP geometry | crop、resize target、interpolation、padding and aspect-ratio policy |
+| Runtime tensor | final layout/dtype/channel order、normalization、tensor address/size |
+
+`rbuv_swap_switch` 之类的开关不能仅凭名字视为修复：必须先确认 AIPP 官方语义、实际输入字节和最终 RGB tensor。一次实验只能改变“数据排列”或“格式/交换声明”中的一个变量，禁止数据先交换一次、接口又反向解释一次。
 
 ## Problem
 
@@ -32,7 +200,7 @@ related: [model-quantization-accuracy-alignment.md]
 flowchart LR
     subgraph LIVE[实时摄像头链路]
         direction LR
-        L1[Sensor RAW] --> L2[ISP / VI]
+        L1[相机或模拟视频源] --> L2[接收解码 / VI]
         L2 --> L3[设备内部视频处理]
         L3 --> L4[NV12]
         L4 --> L5[算法]
@@ -129,12 +297,36 @@ H.264/H.265 可能引入块效应、纹理涂抹、边缘振铃、暗部损失�
 
 ```text
 报警 MP4
-→ 固定解码器
-→ 按算法输入合同生成 NV12
+→ 固定 demux/decode
+→ 恢复时间轴
+→ 按算法输入合同生成图像或 tensor
 → 算法
 ```
 
 这一层绕过播放器、HDMI、注入盒子和 AHD 接收。若仍不能复现，优先检查编码前分支、编码损失、PTS/FPS 和算法版本；此时继续调盒子没有诊断价值。
+
+#### Current OpenCV+FFmpeg path
+
+`cv::VideoCapture::read()` 在通常配置下返回 `CV_8UC3` BGR `Mat`。FFmpeg 已经完成 MP4 demux 和 H.264 decode，OpenCV/FFmpeg 还会把解码 YUV 转成 BGR。它可以做报警逻辑的快速功能复现，但不等价于实时链路的 `VPSS NV12 → AIPP CSC/resize → tensor`：
+
+```text
+实时：VPSS NV12 → AIPP YUV-to-RGB/BGR + resize → model
+回放：MP4 → FFmpeg decode → OpenCV BGR → downstream preprocessing → model
+```
+
+如果 OpenCV BGR 直接送给 RGB/BGR 模型入口，应关闭或绕过 AIPP 的 YUV CSC，并证明 resize、channel order 和 normalization 与训练/板端一致。如果先把 BGR 转回 NV12 再走原 AIPP，会多出 `YUV → BGR → NV12 → RGB/BGR`，引入额外量化和色彩矩阵误差；它只能作为近似回放，不能作为像素级基准。
+
+更严格的数字复现应使用 FFmpeg 原生帧接口保留 `AVFrame` 的 format、planes、linesize 和 PTS：解码输出若不是线性 NV12，应显式转换一次为算法所需 NV12，再走与实时相同的 AIPP。MP4 中的 H.264 sample 通常采用 AVCC 长度前缀；只有直接向 Hi3519 VDEC 喂压缩包时才需要正确完成 demux、访问单元组装及必要的 AVCC→Annex-B 转换。OpenCV 已经解码成 BGR 时，不应再把 `Mat.data` 当 H.264 或 NV12。
+
+建议把数字回放分为三个清楚命名的等级：
+
+| Replay level | Path | What it can prove |
+|---|---|---|
+| L1A functional | MP4 → OpenCV BGR → matched RGB/BGR preprocessing | 场景信息和大部分算法/FSM 是否仍可复现 |
+| L1B preprocessing-aligned | MP4 → FFmpeg frame → one conversion to linear NV12 → original AIPP | 尽量隔离 OpenCV CSC/resize 与 AIPP 差异 |
+| L1C pixel checkpoint | 保存少量实时算法入口 NV12 与 AIPP 后 tensor | 逐阶段定位 VPSS、CSC、resize 或 tensor 差异；不要求现场持续录像 |
+
+每次运行至少打印/保存：OpenCV/FFmpeg 版本、codec/pix_fmt/color_space/color_range、宽高、`Mat.type/channels/step`、帧 PTS、实际送算法时间，以及各模型首个输入 tensor 的 shape/dtype/channel statistics。
 
 ### Layer 2: full-device replay
 
@@ -301,6 +493,7 @@ flowchart LR
 | 算法与编码器输入合同不同 | 先修正源分支 | 编码前差异与回灌差异 |
 | MP4 直接解码已不能复现 | 排查编码、PTS 和源通道 | 编码前/编码侧与盒子侧 |
 | 直接解码可复现，盒子不可复现 | 标定 HDMI/AHD/解码器 | 数字录像与整机注入链路 |
+| 两种回放结果不同但趋势一致 | 按关键阈值与业务容差评估，不宣称等价 | 可用性与像素一致性 |
 | 单帧结果接近，报警时间不同 | 改查 PTS/FSM | 感知与判决 |
 | UV 色度突变但 Y 变化小 | 检查 ISP profile、饱和度和格式 | 色度模式与纯曝光变化 |
 | Y 突变但 UV 仍中性 | 检查 IR LED、AE、ICR | 亮度链与色度链 |
@@ -318,8 +511,14 @@ flowchart LR
 4. NV12/NV21 四组控制实验及实际输入字节证据；
 5. ICR、IR LED、ISP 和 AHD 状态的同步日志；
 6. 开启/关闭监控后的平均、P99 耗时、FPS 和误报统计；
-7. 独立任务 Oracle：固定数据上的检测、分类和报警一致性。
+7. OpenCV L1A 与 FFmpeg/AIPP L1B 的同帧对照，以及少量 L1C tensor checkpoint；
+8. TP2856 测试原始记录：模块版本、输入制式、寄存器/驱动配置、YUV422 packing、颜色矩阵/range、失锁重锁状态；
+9. 独立任务 Oracle：固定数据上的检测、分类和报警一致性。
+
+指定的另一段 ChatGPT 对话正文尚不可访问；其中 TP2856 测试必须在导入后按“测试条件—唯一变量—观测点—原始输出—结论边界”登记，不能只把聊天结论追加到本文。
 
 ## Current conclusion
 
-当前最稳健的诊断顺序是：先锁定算法输入与编码输入合同，再用 MP4 直接解码隔离编码侧，用完整盒子回灌测量附加链路偏差；IR 颜色/亮度突变需要同时保留 ISP、ICR、IR LED 和 AHD 重锁等竞争解释。运行时可直接在 NV12/NV21 的 UV 平面上做低成本中性色度监测，但它只能发现色度异常，不能单独证明滤光片、格式或模型根因。
+当前源码支持的最关键结论是：TP2856 输出已是 YUV422，不是 Bayer RAW；存储和算法是两个独立 VPSS 子通道；存储通道默认面向 NV21/VENC，而算法通道在双线性分支中请求 NV12，再由 AIPP 完成 CSC、resize 和 tensor 前处理。VPSS 属性修改应产生真实 NV12 输出，但仍需板端帧属性、压缩模式和字节 dump 验证。
+
+最稳健的诊断顺序是：先锁定训练—VPSS—AIPP—各模型 tensor 合同，再用 MP4/OpenCV L1A 判断功能可复现性，用 FFmpeg→NV12→原 AIPP 的 L1B 隔离前处理差异，最后用完整盒子回灌测量附加链路偏差。IR 颜色/亮度突变需要同时保留 ISP、ICR、IR LED、TP2856 参数和 AHD 重锁等竞争解释。运行时 UV 监测只能发现色度异常，不能单独证明格式、滤光片或模型根因；报警录像的实际落盘策略和尚未导入的 TP2856 测试仍是明确证据缺口。
