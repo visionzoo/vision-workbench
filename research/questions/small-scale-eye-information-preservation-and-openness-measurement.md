@@ -4,7 +4,7 @@ status: working
 type: research-question
 rigor: standard
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-12
 confidence: low
 provenance: conversation-draft
 evidence_status: unverified
@@ -19,6 +19,8 @@ related: [../experiments/upper-face-roi-information-preservation.md, dms-eye-vis
 ## 1. Evidence boundary
 
 本条目把历史 DMS 工程对话重构为研究问题。当前仓库没有导入原始 IR 图像、人工开合度标注、冻结模型、训练日志、板端输出或可复现实验，因此本文只建立问题、竞争假设、区分性实验和验收门，不报告任何已验证收益。
+
+2026-08-12 对外部训练与目标端工作区做了只读制品核查。核查确认存在训练、评价和部署实现，也发现训练与目标端 ROI 语义、模型谱系和评价器有效性仍未绑定。原始制品没有进入本仓库；在形成可披露的不可变证据指针、通过 owner/IP review 并完成新鲜复现以前，这些内容只改变当前承诺和 Gate 状态，不构成 finding。
 
 历史经验可能来自工作任务、设备或非公开数据。这里只保留抽象后的视觉问题，继续保持 owner/IP review pending；任何原始数据、模型、指标和实现进入仓库前都必须重新确认权属与可披露边界。
 
@@ -114,6 +116,17 @@ flowchart TD
 - NV12/NV21、亮度或色度语义变化可能显著改变局部眼部判断；
 - 关键点、闭眼分类、可见性门控和时序判决目前提供了不同但尚未统一的眼状态证据。
 
+### 7.1 2026-08-12 artifact intake
+
+以下是对可定位但尚未获准进入本仓库的外部制品所作的受限观察：
+
+- 训练侧把任务表述为 upper-face crop 上的单类眼睛检测；目标端实现使用由人脸框中心扩展得到的方形区域。两者不是同一个已冻结的 ROI 合同，因此当前首个待核边界位于模型之前的 crop、padding 与 resize 链；
+- 目标端已有眼睛检测、左右分配和下游 eye ROI 接口，但部署模型缺少能够从训练 run 经导出、转换追到目标制品的完整不可变谱系；“代码与模型已进入分支”只能证明实现存在，不能证明训练—部署等价或任务通过；
+- 关键点工作区已有 PFLD/HRNet、对齐训练和统一比较实现，但现有对比结果早于最新对齐运行，且聚合指标出现会支配均值的异常值。评价器原因未定位、运行未按冻结合同重做以前，任何模型优劣判断均拒绝接收；
+- 检测训练记录存在配置身份与文字说明不一致的候选 run。该冲突必须在 P0 解决，不能由文件名、最新时间或发布说明猜测实际模型身份。
+
+这些观察共同支持一个较窄的行动变化：先验证制品身份和端到端语义，再解释模型效果。它们不支持“ROI 有效”“HRNet 优于 PFLD”或“目标端已经验证”等结论，也不提高本文的证据强度。
+
 这些观察没有绑定公开资产、模型版本、样本量或复现实验，不能作为 finding 引用。
 
 ## 8. Competing hypotheses and predictions
@@ -148,11 +161,12 @@ H3、H6 和 H7 分别承载此前的 Neck、下采样与监督竞争解释；在
 
 当前只承诺：
 
-1. 运行 [Upper-face ROI information-preservation experiment](../experiments/upper-face-roi-information-preservation.md)，分离尺度、上下文、搜索空间、位置先验和 ROI 误差；
-2. 将 [Eye visibility and localization reliability](dms-eye-visibility-and-localization-reliability.md) 作为 observability 子问题；
-3. 将 [DMS eye keypoint model selection](../experiments/dms-eye-keypoint-model-selection.md) 作为眼睑结构恢复与部署候选比较，不用模型排名替代 R1；
-4. 以历史 YOLOv8 上半脸链路作为第一个现象入口，以 YOLO26 作为现代整机观察锚点，YOLO11和经典结构只按区分需要进入；
-5. 在形成合法、可披露、可复现的代码资产前，不建立独立 lab，不修改 projects registry。
+1. 先为现有训练、PC 推理和目标端链建立可披露的制品身份、ROI、padding、resize、通道、range、坐标与后处理合同，并用合成输入完成几何验证；
+2. 合同通过后运行 [Upper-face ROI information-preservation experiment](../experiments/upper-face-roi-information-preservation.md)，分离尺度、上下文、搜索空间、位置先验和 ROI 误差；
+3. 将 [Eye visibility and localization reliability](dms-eye-visibility-and-localization-reliability.md) 作为 observability 子问题；
+4. 将 [DMS eye keypoint model selection](../experiments/dms-eye-keypoint-model-selection.md) 作为眼睑结构恢复与部署候选比较；评价器未通过有效性测试前拒绝模型排名；
+5. 以历史 YOLOv8 上半脸链路作为第一个现象入口，以 YOLO26 作为现代整机观察锚点，YOLO11和经典结构只按区分需要进入；
+6. 在形成合法、可披露、可复现的代码资产前，不建立独立 lab，不修改 projects registry。
 
 本次建立研究不授权下载未审查数据、训练模型、接触公司资产、冻结阈值或宣称工程收益。
 

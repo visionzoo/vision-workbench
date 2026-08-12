@@ -4,7 +4,7 @@ status: working
 type: experiment
 rigor: standard
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-12
 confidence: low
 provenance: conversation-draft
 evidence_status: unverified
@@ -299,12 +299,21 @@ report.md
 
 ## 13. Current status
 
-协议已建立，尚未运行。下一步不是训练新模型，而是由本人冻结：
+协议已建立，尚未按冻结合同运行。2026-08-12 的外部制品核查把当前状态进一步收窄为：
+
+- **P0 未通过**：训练侧的 upper-face crop 与目标端由人脸中心扩展得到的方形区域尚未形成同一 ROI 语义；训练 run、导出模型与目标制品的不可变谱系也不完整；
+- **P1 未运行**：尚无同一样本上的 crop、padding、resize、坐标逆变换和实际模型输入对照；
+- **P2–P5 未授权**：不能用已有检测结果、部署提交或关键点视频替代后续 Gate。
+
+这些观察只定位了优先核查边界，没有证明差异必然造成精度损失。目标端方形区域也可能在某些条件下提供更多上下文；必须通过同样本、单变量输入对照区分，而不能从命名推断优劣。
+
+下一步不是训练新模型，而是由本人冻结：
 
 1. 合法数据来源和最小 slice；
 2. YOLOv8-style baseline 的版本与输入合同；
-3. upper-face ROI 的现有精确定义；
-4. eyelid/openness Oracle 与 probe；
-5. pilot 后的数值验收门。
+3. 训练、PC 与目标端各自的 ROI 精确定义，以及哪一项作为 baseline、哪一项作为 intervention；
+4. 训练 run、导出模型、转换配置与目标制品的身份链；
+5. eyelid/openness Oracle 与 probe；
+6. pilot 后的数值验收门。
 
 这些对象未冻结前，实验保持 working / unverified / low。
