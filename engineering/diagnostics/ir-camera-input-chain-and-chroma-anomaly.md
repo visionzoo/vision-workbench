@@ -4,7 +4,7 @@ status: working
 type: diagnostic
 rigor: standard
 created: 2026-08-06
-updated: 2026-08-12
+updated: 2026-08-13
 confidence: medium
 provenance: internal-document-and-source-review
 evidence_status: partial
@@ -18,7 +18,7 @@ related: [model-quantization-accuracy-alignment.md]
 
 ## Evidence boundary
 
-本条目由 IR 摄像头、报警视频回灌和 NV12 输入异常排查对话抽象而来，并在 2026-08-12 综合了《DMS 输入图像对齐》内部文档、Hi3519 媒体服务目标分支的只读源码审查以及设备侧模块观察。源码审查可以确认软件配置意图和模块连接，但不能替代板端返回值、帧元数据、原始字节和算法张量实测；内部文档中的图示、判断表和数据集颜色统计仍属于项目观察，不是独立 Oracle。
+本条目由 IR 摄像头、报警视频回灌和 NV12 输入异常排查对话抽象而来，并在 2026-08-13 综合了《DMS 输入图像对齐》《DSM - 媒体视频流 pipeline 核查》两份内部文档、Hi3519 媒体服务目标分支的只读源码审查以及设备侧命令输出。源码审查可以确认软件配置意图和模块连接，但不能替代板端返回值、帧元数据、原始字节和算法张量实测；对话导出中的命令输出属于已记录的设备观察，但本文没有重新执行这些命令，也未导入对应二进制、寄存器快照压缩包或原始视频。
 
 当前没有导入原始 NV12、TP2856 完整数据手册/寄存器表、驱动源码、连续日志、视频注入盒子实测数据或多设备统计。因此本文状态仍为 `working`、`owner_review: pending`、`ip_review: pending`。内容只记录理解和复现链路所必需的模块合同，不复制公司源码、内网链接、数据路径或客户信息；公开、晋级或提取到公共项目之前必须完成独立实验和 IP 审查。
 
@@ -28,9 +28,47 @@ related: [model-quantization-accuracy-alignment.md]
 |---|---|---|
 | Hi3519 媒体服务目标分支源码审查 | TP2856 用户态接口、VI/PSFM/VPSS 连接、算法/存储通道属性、VENC 和通用 MP4 封装意图 | 未在目标板复核全部 MPI 返回值、通道分配和运行时帧属性 |
 | 《DMS 输入图像对齐》2026-08-12 版本 | DMS 模块拆解、直接解码/盒子回灌判定矩阵、训练—部署核对项、数据集颜色分布观察 | 内部文档；部分表格尚未填完，统计缺少独立复算记录 |
-| 设备侧观察：`/proc/modules` 出现 `ot_tp2856` | TP2856 是已加载的独立内核模块，而非内建驱动 | 当前条目未保存原始命令输出、模块版本和加载脚本 |
+| 《DSM - 媒体视频流 pipeline 核查》对话导出 | `ot_tp2856` 模块/设备节点观察、同族驱动静态分析、运行态图像寄存器读取和版本漂移线索 | 是对话转录证据；原始 `.ko`、dump 压缩包和完整板端日志未纳入本仓库，未独立复跑 |
+| 设备侧观察：`/proc/modules` 出现 `ot_tp2856` | TP2856 是已加载的 out-of-tree 内核模块，而非内建驱动；`/dev/tp2802dev` 是实际用户态入口 | 只证明当时的加载和节点状态，不证明驱动版本、寄存器正确或持续出图 |
 | OpenCV+FFmpeg 回放说明 | 当前 MP4 直接解码入口和待核对假设 | 仍需保存 OpenCV build information、实际 `Mat` 类型和下游调用证据 |
-| 指定的另一段 ChatGPT 对话 | 据称包含 TP2856 对应测试 | 当前链接需要登录态，正文尚未导入，不能吸收或引用其结论 |
+
+### Evidence classification from this investigation
+
+| Classification | Current evidence | Allowed conclusion |
+|---|---|---|
+| Device observation | 对话中保存的 `/proc/modules`、sysfs、设备节点和寄存器读取输出 | 可记录当时实际模块/节点和读值；因未在本文工作区复跑，结论必须绑定到该次设备状态 |
+| User-reported runtime configuration | MP4 回放使用启用 FFmpeg 的 OpenCV | 可以把当前回放建模为 OpenCV 解复用/解码路径；实际后端、输出 `Mat` 和色彩元数据仍需运行日志 |
+| Source-supported | 媒体服务目标分支与客户端媒体代码的只读调用链 | 可以描述模块连接和配置意图；MPI/ioctl 成功、运行时 channel 属性和 Buffer 字节仍需板端验证 |
+| Internal-document observation | 《DMS 输入图像对齐》中的流程图、测试思路、判定矩阵与颜色统计 | 可形成候选解释和实验设计；不能单独晋级为生产结论 |
+| Conversation-export evidence | 《DSM - 媒体视频流 pipeline 核查》中的 TP2856 静态分析和板端命令输出 | 可用于收敛假设和设计复测；没有原始工件、版本闭环或成对实验时，不能晋级为已验证根因 |
+
+## Media pipeline summary
+
+当前可支持的端到端媒体流程如下。表中的“数据格式”是模块边界合同，不代表未经运行时检查就已证明每个 Buffer 字节正确。
+
+| Step | Module | Input → output | Responsibility and boundary |
+|---|---|---|---|
+| 0 | 系统启动/板级脚本 | `ot_tp2856.ko` → 内核模块和设备节点 | 加载驱动；不属于媒体服务职责 |
+| 1 | TP2856 驱动与媒体控制层 | ioctl 配置 → TP2856 通道模式 | 媒体服务打开 `/dev/tp2802dev`，配置制式、分辨率、刷新率和 MIPI 模式；驱动/芯片执行具体寄存器操作 |
+| 2 | TP2856 芯片 | 模拟 AHD → MIPI CSI-2 YUV422 | 完成模拟接收与硬件视频解码；输出已经不是 Bayer RAW |
+| 3 | Hi3519 MIPI RX / VI | MIPI YUV422 → VI frame | 接收虚拟通道和时序；部分“raw timing”枚举是 packed-YUV 承载方式，不表示 Bayer ISP 流程 |
+| 4 | PSFM（仅复用输入） | 带通道头的伪单帧 → 分离通道 | 恢复被复用的逻辑视频通道；普通 VI pipe 不经过此分支 |
+| 5 | VPSS group | VI/PSFM frame → 多个独立 VPSS channel | 媒体链路的关键分叉点；存储流与算法流是兄弟通道，不是前后串行 |
+| 6A | VPSS 算法通道 | group frame → 目标尺寸线性 YUV420SP | 当前代码在双线性分支请求 NV12（Y+UV），再通过共享取帧接口交给算法；必须验证 pixel/compress/video format 和 stride |
+| 7A | AIPP | NV12 → RGB/BGR tensor | 硬件完成 CSC、resize 及模型前处理；matrix/range、通道顺序、归一化和几何必须与训练一致 |
+| 8A | DMS 模型与 FSM | tensor/ROI/PTS → 检测、分类与报警 | 检测框会影响关键点和眼部 ROI，时间戳/FPS 会影响最终报警；最终报警不是单帧图像一致性的替代 Oracle |
+| 6B | VPSS 存储通道 | group frame → YVU420SP/NV21 intent | 为 VENC 独立申请通道；其状态不能代表算法通道的 NV12/NV21 |
+| 7B | Hi3519 VENC | YUV420SP → H.264 Annex-B | 硬件有损编码，产生 SPS/PPS/IDR/P；编码和 MP4 封装是两个过程 |
+| 8B | 录像/MP4 层 | H.264 + 可选音频 → MP4/报警索引 | 通用打包代码可确认 Annex-B→MP4 sample；当前仓库不足以证明录像服务的分片、预录和报警保护策略 |
+| 9 | OpenCV+FFmpeg 回放 | MP4/H.264 → 通常为 BGR `Mat` | 适合功能复现，但默认绕过实时 NV12→AIPP CSC 路径；严格对齐需 FFmpeg frame→线性 NV12→原 AIPP |
+
+### Five distinctions that must remain explicit
+
+1. **驱动加载与芯片配置不同**：系统加载 `ot_tp2856.ko`；媒体服务只通过设备节点和 ioctl 使用它。
+2. **YUV420SP 不是完整格式名**：还必须区分 NV12 的 UV 与 NV21 的 VU，以及 stride、plane、compression 和 video layout。
+3. **VENC 状态不等于算法输入状态**：两者来自不同 VPSS channel；不能依据存储通道修改 AIPP swap。
+4. **H.264 编码不等于 MP4 封装**：VENC 负责有损压缩，mux 层负责容器、track 和 sample。
+5. **MP4 能播放不等于输入已对齐**：OpenCV BGR 回放、FFmpeg→NV12→AIPP 回放和整机 HDMI/AHD 注入是三个不同等级的实验。
 
 ## Source-supported platform chain and module boundaries
 
@@ -66,22 +104,52 @@ flowchart LR
 - `/dev/tp2802dev` 是沿用 TP2802 系列用户态 ABI 的节点名，不能据此推断实际芯片不是 TP2856。
 - 当前用户态代码在 `open` 失败时主要记录日志，没有建立强制启动门；因此“媒体进程存活”不能作为驱动可用 Oracle。必须同时检查设备节点、ioctl 返回值和 MIPI/VI 是否持续出帧。
 
-### TP2856 test evidence intake
+### TP2856 driver and board-test findings
 
-尚未导入的 TP2856 测试不能只记录“正常/异常”结论。每组测试至少补齐：
+对话导出将此前混在一起的“参考驱动静态分析”和“板端实际状态”拆开了。当前证据强度如下：
+
+| Finding | Evidence level | Conclusion boundary |
+|---|---|---|
+| 板端加载 `ot_tp2856`，并出现 `(O)` 标记 | 设备命令输出 | 它是实际运行的 out-of-tree 模块，不是编进内核；模块是否由哪个启动脚本加载仍未闭环 |
+| `/dev/tp2802dev` 存在 | 设备命令输出 + 媒体服务字符串/源码 | 媒体服务经该字符设备使用 TP2856；节点名沿用 TP2802 ABI |
+| 参考 `hi_tp2856.ko` 与实际 `ot_tp2856.ko` 摘要不同 | 对话中记录的文件比对 | 二者不能视为同一二进制，早期针对 `hi_tp2856` 的寄存器结论只能作同族参考 |
+| `ot_tp2856` 暴露的关键函数名与参考模块相符 | 实际模块符号观察 | 支持二者来自相近 Techpoint 驱动体系，但不能证明所有表项和默认值相同 |
+| 驱动存在分页、视频模式、寄存器读写和 MIPI 输出配置路径 | 静态分析 | 支持“用户态 ioctl → 驱动寄存器配置 → TP2856 MIPI 输出”调用模型 |
+| TP2856 向 SoC 输出 8-bit YUV422 | 驱动/媒体配置共同支持 | 数据类型较强支持；具体 YUYV/UYVY/YVYU/VYUY 字节序仍需在 MIPI/VI 边界取样确认 |
+| TP2856 内部模拟视频解码算法 | 仅芯片类别与行为推断 | 不能从驱动表还原其均衡、解调、AGC、亮色分离或 CSC 的完整专有实现 |
+
+这也修正了“驱动是否由媒体代码加载”的边界：媒体服务负责 `open` 和 ioctl 配置，系统启动路径负责加载 `.ko`。`/proc/modules` 的实际观察已经排除“驱动一定编进内核”的说法。
+
+#### Source/runtime version drift
+
+对话中的一次核查发现，所审源码预期传入的 MIPI 输出枚举和 PAL/720p 模式，与板端模块参数观察值不一致；板端 `mediad` 的字符串只能证明包含设备节点和失败日志，不能证明它就是该源码版本的产物。因此必须把以下组合视为一个不可拆分的实验版本：固件、`ot_tp2856.ko` 摘要、`mediad` 摘要/构建标识、媒体配置文件以及 ioctl 调用者。版本未闭环前，不能用源码枚举反向解释某次板端寄存器状态。
+
+#### Brightness and chroma test already performed
+
+板端曾只读两颗 TP2856、每颗四个 decoder page 的五个 picture-control 寄存器。八路读值完全一致：brightness=`0x00`、contrast=`0x40`、saturation=`0x40`、hue=`0x00`、sharpness=`0x00`。这组单次快照看起来更接近中性设置，**不支持“某一路静态亮度/对比度参数随机配错”**；同一对话中的模块静态分析还显示初始化表曾使用另一组候选值，说明运行期可能有后续覆盖，不能把初始化表当作最终状态。
+
+该测试尚未构成根因证明，因为没有在同一设备、同一输入下保存“正常画面”和“突然变亮画面”的成对快照。下一次复测应同步保存：
+
+1. 上述五个 picture-control 寄存器；
+2. decoder lock/standard/status；
+3. AGC、external gain、clamp、black-level 相关状态；
+4. VI/算法 VPSS 的 Y、U、V 统计和 PTS；
+5. 输入源、线缆、温度、供电及事件前后时间线。
+
+如果突亮前后五个寄存器变化，picture-control 写入路径进入首要嫌疑；如果持续保持中性值，则应优先检查 AGC/gain/clamp/black-level、信号失锁重锁和上游光学/照明，而不是继续修改这五个静态参数。
+
+#### Evidence still required for each TP2856 test
 
 | Field | Required evidence |
 |---|---|
-| Environment | 板卡/固件、`ot_tp2856` 模块版本、媒体服务版本、温度与供电 |
+| Environment | 板卡/固件、实际模块和媒体服务构建标识、温度与供电 |
 | Input | 信号源、AHD 制式、分辨率、FPS、线缆/注入方式、标准测试图或真实片段 |
-| Driver configuration | channel、mode、standard、MIPI output，以及相关 ioctl 返回值；寄存器仅在权属允许时保存摘要 |
+| Driver configuration | channel、mode、standard、MIPI output、ioctl 返回值，以及配置前后状态 |
 | Capture checkpoints | TP2856/MIPI YUV422、VI/PSFM、存储 VPSS、算法 VPSS、AIPP 后 tensor 中能取得的最早检查点 |
 | Image contract | packing、width/height、stride、UV/VU、matrix/range、crop/scale、mirror/flip、compression |
 | Time contract | PTS、实测 FPS、失锁/重锁、重复/丢帧及首次稳定帧 |
-| Oracle | 色条/灰阶的数值误差、几何坐标、模型 raw output 与 FSM，而非“肉眼正常” |
+| Oracle | 色条/灰阶数值误差、几何坐标、模型 raw output 与 FSM，而非“肉眼正常” |
 | Conclusion boundary | 当前排除/支持了什么，哪些替代解释仍存活 |
-
-对话导出后，应把每个 TP2856 测试映射到该表，并链接合法保存的原始输出；没有环境和原始观测的聊天结论只能保留为 hypothesis。
 
 ### What “RAW” means in this path
 
@@ -512,13 +580,13 @@ flowchart LR
 5. ICR、IR LED、ISP 和 AHD 状态的同步日志；
 6. 开启/关闭监控后的平均、P99 耗时、FPS 和误报统计；
 7. OpenCV L1A 与 FFmpeg/AIPP L1B 的同帧对照，以及少量 L1C tensor checkpoint；
-8. TP2856 测试原始记录：模块版本、输入制式、寄存器/驱动配置、YUV422 packing、颜色矩阵/range、失锁重锁状态；
+8. TP2856 成对原始记录：实际 `ot_tp2856`/`mediad` 构建标识、输入制式、正常/突亮寄存器快照、YUV422 packing、颜色矩阵/range、失锁重锁状态；
 9. 独立任务 Oracle：固定数据上的检测、分类和报警一致性。
 
-指定的另一段 ChatGPT 对话正文尚不可访问；其中 TP2856 测试必须在导入后按“测试条件—唯一变量—观测点—原始输出—结论边界”登记，不能只把聊天结论追加到本文。
+《DSM - 媒体视频流 pipeline 核查》的正文已纳入本次证据梳理，但其中的 `.ko`、dump 压缩包、完整日志和正常/突亮成对快照尚未纳入本仓库；后续必须按“测试条件—唯一变量—观测点—原始输出—结论边界”登记后，才能把转录结论晋级为已验证事实。
 
 ## Current conclusion
 
-当前源码支持的最关键结论是：TP2856 输出已是 YUV422，不是 Bayer RAW；存储和算法是两个独立 VPSS 子通道；存储通道默认面向 NV21/VENC，而算法通道在双线性分支中请求 NV12，再由 AIPP 完成 CSC、resize 和 tensor 前处理。VPSS 属性修改应产生真实 NV12 输出，但仍需板端帧属性、压缩模式和字节 dump 验证。
+当前源码和实测转录共同支持的最关键结论是：板端实际运行独立的 `ot_tp2856`；TP2856 输出已是 YUV422，不是 Bayer RAW，但精确 YUV422 字节序和芯片内部专有解码算法尚未证明；存储和算法是两个独立 VPSS 子通道；存储通道默认面向 NV21/VENC，而算法通道在双线性分支中请求 NV12，再由 AIPP 完成 CSC、resize 和 tensor 前处理。VPSS 属性修改应产生真实 NV12 输出，但仍需板端帧属性、压缩模式和字节 dump 验证。
 
-最稳健的诊断顺序是：先锁定训练—VPSS—AIPP—各模型 tensor 合同，再用 MP4/OpenCV L1A 判断功能可复现性，用 FFmpeg→NV12→原 AIPP 的 L1B 隔离前处理差异，最后用完整盒子回灌测量附加链路偏差。IR 颜色/亮度突变需要同时保留 ISP、ICR、IR LED、TP2856 参数和 AHD 重锁等竞争解释。运行时 UV 监测只能发现色度异常，不能单独证明格式、滤光片或模型根因；报警录像的实际落盘策略和尚未导入的 TP2856 测试仍是明确证据缺口。
+最稳健的诊断顺序是：先锁定训练—VPSS—AIPP—各模型 tensor 合同，再用 MP4/OpenCV L1A 判断功能可复现性，用 FFmpeg→NV12→原 AIPP 的 L1B 隔离前处理差异，最后用完整盒子回灌测量附加链路偏差。IR 颜色/亮度突变需要同时保留 ISP、ICR、IR LED、TP2856 picture control、AGC/gain/clamp 和 AHD 重锁等竞争解释。当前八路单次寄存器读值不支持静态 picture-control 配错，但没有正常/突亮成对快照，不能据此排除动态增益或重锁路径。报警录像的实际落盘策略、驱动/媒体二进制版本闭环和 TP2856 原始测试工件仍是明确证据缺口。
