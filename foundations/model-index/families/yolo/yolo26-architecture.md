@@ -2,7 +2,7 @@
 status: working
 type: model-index
 rigor: standard
-provenance: official-documentation-report-fixed-ultralytics-source-and-local-source-execution
+provenance: official-report-fixed-ultralytics-source-public-issue-research-and-local-smoke-tests
 evidence_status: partial
 owner_review: pending
 ip_review: not-applicable
@@ -11,276 +11,483 @@ created: 2026-08-14
 updated: 2026-08-14
 ---
 
-# YOLO26 architecture and modification map
+# YOLO26 architecture: from blocks to safe modification
 
-本页服务三个目标：能够不看源码复述 YOLO26 检测模型的数据流；能够从一次结构修改追到训练、推理与导出接口；能够用机制回答面试追问。它不是模型宣传摘要，也不把尚未执行的修改写成经验。
+本页的目标不是记住模块名，而是建立三种能力：从 YAML 还原真实计算图；从一个模块修改追到训练、推理和导出接口；能用结构和证据回答面试追问。总体图、模块图和逐层 shape 以 Ultralytics `v8.4.120`、commit `b103ba8d0944bfd8de69bfded9778ac5daadd956` 为当前实现锚点（Y023）。
 
-## 1. 版本、对象与证据边界
+## 1. 先澄清名字与版本
 
-本页只把 Ultralytics `8.4.2` 的提交 `486342c195c28c739a033f599bbbb720d749f3d0` 作为源码 Oracle（Y023），主要对象是默认闭集检测配置 `yolo26.yaml`。分析中的层号、参数含义和执行路径都绑定该提交；在线文档、后续 release、YOLOE-26、pose、segment、OBB、P2 与 P6 配置不能自动套用。
+固定源码中不存在 `C3Kf`。容易混淆的名称是：
 
-当前证据来自第一方文档、技术报告、固定源码阅读，以及一次 640×640 CPU 合成输入的 shape 与 eval 输出检查；该执行输出尚未形成持久化证据，且未运行 backward、fuse、export 或结构改造，因此保持 `working / partial / owner_review: pending`。下文“源码事实”表示固定 revision 中可定位的行为，不表示本人已经复现实验结果。
+| 名称 | 是否被默认 YOLO26 detect 使用 | 真实关系 |
+|---|---|---|
+| `C3f` | 否 | 独立的三卷积 CSP/C2f 风格模块 |
+| `C3k` | 是，作为 `C3k2` 内部单元 | 继承 `C3`，内部 Bottleneck 使用可配置 k×k kernel |
+| `C3k2` | 是，backbone 和 neck 的主 block | 继承 `C2f`，根据参数选择 Bottleneck、C3k 或 Bottleneck+PSABlock |
+| `C3Kf` | 否 | 当前固定源码没有这个类；若外部文章使用该词，必须先定位其仓库定义 |
 
-## 2. 一句话结构
+现有旧页曾固定 `v8.4.2`。比较 `v8.4.2` 与 `v8.4.120` 后，默认 `yolo26.yaml` 拓扑没有变化，但 Detect、predictor 和 exporter 已加入运行时 `end2end` 切换、grouped top-k、类别过滤修复及更多后端降级条件。因此：结构图可稳定复用，接口和部署结论必须绑定当前 release。
 
-```text
-image
-→ stride-2 Conv + C3k2 backbone
-→ SPPF(shortcut) + C2PSA
-→ top-down / bottom-up PAN-style fusion
-→ P3/8, P4/16, P5/32
-→ two decoupled Detect branches during training
-   ├─ one-to-many: trains shared features and an auxiliary head
-   └─ one-to-one: trains the inference head from detached features
-→ direct l/t/r/b distance decode
-→ sigmoid class scores
-→ top-k selection without IoU-based NMS
+本文用 Y023/Y029 指向 [`sources.md`](sources.md) 中的固定公开来源；E001 指向本仓库的 [YOLO26 architecture smoke tests](../../../../engineering/cases/yolo26-architecture-smoke-tests.md) 及其原始结果记录。Y 是外部来源，E 是本地执行证据，两者不能互相替代。
+
+## 2. 总体结构图
+
+下面是默认 `yolo26n.yaml` 在 640×640 输入下的真实主路径。节点号对应 YAML；虚线表示 backbone 到 neck 的跨层连接。
+
+```mermaid
+flowchart TB
+  I["Input<br/>B×3×640×640"]
+
+  subgraph BB["Backbone"]
+    direction TB
+    L0["0 Conv s2<br/>16×320×320"]
+    L1["1 Conv s2<br/>32×160×160"]
+    L2["2 C3k2<br/>64×160×160"]
+    L3["3 Conv s2<br/>64×80×80"]
+    L4["4 C3k2<br/>P3: 128×80×80"]
+    L5["5 Conv s2<br/>128×40×40"]
+    L6["6 C3k2-C3k<br/>P4: 128×40×40"]
+    L7["7 Conv s2<br/>256×20×20"]
+    L8["8 C3k2-C3k<br/>256×20×20"]
+    L9["9 SPPF + shortcut<br/>256×20×20"]
+    L10["10 C2PSA<br/>P5: 256×20×20"]
+  end
+
+  subgraph NK["Bidirectional feature fusion / neck"]
+    direction TB
+    L11["11 Upsample ×2"]
+    L12["12 Concat with P4<br/>384×40×40"]
+    L13["13 C3k2-C3k<br/>128×40×40"]
+    L14["14 Upsample ×2"]
+    L15["15 Concat with P3<br/>256×80×80"]
+    L16["16 C3k2-C3k<br/>Detect P3: 64×80×80"]
+    L17["17 Conv s2"]
+    L18["18 Concat with layer 13<br/>192×40×40"]
+    L19["19 C3k2-C3k<br/>Detect P4: 128×40×40"]
+    L20["20 Conv s2"]
+    L21["21 Concat with layer 10<br/>384×20×20"]
+    L22["22 C3k2<br/>Bottleneck + PSA<br/>Detect P5: 256×20×20"]
+  end
+
+  subgraph HD["Detect"]
+    direction TB
+    D["23 Detect(P3,P4,P5)"]
+    O2M["one-to-many<br/>dense training / optional NMS path"]
+    O2O["one-to-one<br/>default NMS-free inference path"]
+    TOPK["decode + sigmoid + top-k<br/>B×300×6"]
+  end
+
+  I --> L0 --> L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7 --> L8 --> L9 --> L10
+  L10 --> L11 --> L12 --> L13 --> L14 --> L15 --> L16 --> L17 --> L18 --> L19 --> L20 --> L21 --> L22
+  L6 -.-> L12
+  L4 -.-> L15
+  L13 -.-> L18
+  L10 -.-> L21
+  L16 --> D
+  L19 --> D
+  L22 --> D
+  D --> O2M
+  D --> O2O --> TOPK
 ```
 
-YOLO26 的关键差异不只是“去掉 NMS”。默认配置同时选择 `end2end: true` 和 `reg_max: 1`：训练时建立 two-head supervision，推理时只消费 one-to-one head；回归头每个位置只输出四个距离，不再输出 YOLO11 默认的 4×16 个 DFL logits（Y023）。
+这个图揭示了三个修改边界：backbone 的 P3/P4/P5 是 neck 的外部接口；neck 同时有 top-down 和 bottom-up 消费者；Detect 的输入数量决定 stride、候选数、assigner 和导出输出。
 
-## 3. 先读懂 YAML 如何变成网络
+## 3. 逐层 shape ledger
 
-每一行配置遵循：
+以下是 `scale=n`、输入 `B×3×640×640` 的本地 hook 结果（E001）。
+
+| Layer | From | Module | Output | Stride | 内部单元 |
+|---:|---:|---|---|---:|---|
+| 0 | -1 | Conv 3×3/s2 | `B×16×320×320` | 2 | Conv-BN-SiLU |
+| 1 | -1 | Conv 3×3/s2 | `B×32×160×160` | 4 | Conv-BN-SiLU |
+| 2 | -1 | C3k2 | `B×64×160×160` | 4 | Bottleneck |
+| 3 | -1 | Conv 3×3/s2 | `B×64×80×80` | 8 | Conv-BN-SiLU |
+| 4 | -1 | C3k2 | `B×128×80×80` | 8 | Bottleneck |
+| 5 | -1 | Conv 3×3/s2 | `B×128×40×40` | 16 | Conv-BN-SiLU |
+| 6 | -1 | C3k2 | `B×128×40×40` | 16 | C3k |
+| 7 | -1 | Conv 3×3/s2 | `B×256×20×20` | 32 | Conv-BN-SiLU |
+| 8 | -1 | C3k2 | `B×256×20×20` | 32 | C3k |
+| 9 | -1 | SPPF | `B×256×20×20` | 32 | 3× MaxPool + outer shortcut |
+| 10 | -1 | C2PSA | `B×256×20×20` | 32 | one PSABlock for n scale |
+| 11 | -1 | Upsample | `B×256×40×40` | 16 | nearest |
+| 12 | 11,6 | Concat | `B×384×40×40` | 16 | channel concat |
+| 13 | -1 | C3k2 | `B×128×40×40` | 16 | C3k |
+| 14 | -1 | Upsample | `B×128×80×80` | 8 | nearest |
+| 15 | 14,4 | Concat | `B×256×80×80` | 8 | channel concat |
+| 16 | -1 | C3k2 | `B×64×80×80` | 8 | C3k |
+| 17 | -1 | Conv 3×3/s2 | `B×64×40×40` | 16 | bottom-up downsample |
+| 18 | 17,13 | Concat | `B×192×40×40` | 16 | channel concat |
+| 19 | -1 | C3k2 | `B×128×40×40` | 16 | C3k |
+| 20 | -1 | Conv 3×3/s2 | `B×128×20×20` | 32 | bottom-up downsample |
+| 21 | 20,10 | Concat | `B×384×20×20` | 32 | channel concat |
+| 22 | -1 | C3k2 | `B×256×20×20` | 32 | Bottleneck → PSABlock |
+| 23 | 16,19,22 | Detect | raw: `B×(4+nc)×8400` per branch | 8/16/32 | two independent heads |
+
+`8400 = 80² + 40² + 20²` 只表示候选位置数，不表示正样本数或最终框数。
+
+## 4. YAML 如何变成 scale=n/s/m/l/x
 
 ```text
 [from, repeats, module, args]
 ```
 
-- `from=-1` 表示上一层；列表表示取多个已保存输出；
-- `repeats>1` 会先乘 depth scale 并至少保留一次；对 repeat module，缩放后的次数传入模块内部；
-- 输出通道先受 width scale 和 `max_channels` 限制，再对齐到 8 的倍数；
-- `Detect` 的 `reg_max`、`end2end` 和输入通道由 `parse_model()` 从顶层配置追加，不只来自该行 `[nc]`；
-- `C3k2` 在 m/l/x scale 会被 parser 强制切到 `c3k=True`，所以同一个 YAML 的 n/s 与 m/l/x 不能只理解为等比例增宽加深。
+`parse_model()` 会做四类改写：解析来源节点；用 depth multiplier 缩放内部 repeats；用 width multiplier 与 `max_channels` 缩放通道并对齐到 8；把顶层 `reg_max`、`end2end` 和 Detect 输入通道追加到 head 构造参数。
 
-默认 compound scales 为：
-
-| Scale | depth | width | max channels | 结构解释边界 |
+| Scale | depth | width | max channels | 容易漏掉的变化 |
 |---|---:|---:|---:|---|
-| n | 0.50 | 0.25 | 1024 | 本页逐层 shape 锚点 |
-| s | 0.50 | 0.50 | 1024 | repeats 与 n 相同，通道更宽 |
-| m | 0.50 | 1.00 | 512 | parser 会改变 C3k2 内部选择 |
-| l | 1.00 | 1.00 | 512 | repeats 增加，且使用 m/l/x 的 C3k2 路径 |
-| x | 1.00 | 1.50 | 512 | 宽度继续增加但受 max channels 限制 |
+| n | 0.50 | 0.25 | 1024 | 本页 shape 锚点，重复 2 通常缩为 1 |
+| s | 0.50 | 0.50 | 1024 | repeats 同 n，通道更宽 |
+| m | 0.50 | 1.00 | 512 | parser 会把 C3k2 的 `c3k` 强制为 true |
+| l | 1.00 | 1.00 | 512 | repeats 增加 |
+| x | 1.00 | 1.50 | 512 | 通道继续增加，但受 max channel 限制 |
 
-因此比较 scale 时要同时比较有效 repeats、有效通道和 block 类型，不能只比较参数量。
+所以 scale 不是纯宽度缩放；m/l/x 的 block 选择也可能变化。
 
-## 4. YOLO26n 默认检测拓扑与 shape ledger
+## 5. 基础单元：Conv 与 Bottleneck
 
-以下 shape 假设输入为 `B×3×640×640`，只记录模块输出。通道是 scale=n 经 parser 缩放后的有效值；空间尺寸要求输入与连接关系兼容，不代表任意奇数输入都能无条件 concat。
+默认 `Conv(c1,c2,k,s)` 是 `Conv2d(bias=False) → BatchNorm2d → SiLU`。`model.fuse()` 会把 Conv 与 BN 合并，并把 forward 切到无 BN 路径。
 
-| Layer | From | Module | Output shape | Stride | 作用 |
-|---:|---:|---|---|---:|---|
-| 0 | -1 | Conv 3×3/s2 | `B×16×320×320` | 2 | stem 下采样 |
-| 1 | -1 | Conv 3×3/s2 | `B×32×160×160` | 4 | 形成 P2 尺度 |
-| 2 | -1 | C3k2 | `B×64×160×160` | 4 | 浅层局部特征 |
-| 3 | -1 | Conv 3×3/s2 | `B×64×80×80` | 8 | 进入 P3 |
-| 4 | -1 | C3k2 | `B×128×80×80` | 8 | P3 backbone feature |
-| 5 | -1 | Conv 3×3/s2 | `B×128×40×40` | 16 | 进入 P4 |
-| 6 | -1 | C3k2(c3k) | `B×128×40×40` | 16 | P4 backbone feature |
-| 7 | -1 | Conv 3×3/s2 | `B×256×20×20` | 32 | 进入 P5 |
-| 8 | -1 | C3k2(c3k) | `B×256×20×20` | 32 | 深层局部/语义特征 |
-| 9 | -1 | SPPF(k=5,n=3,shortcut) | `B×256×20×20` | 32 | 多范围 pooling，上接残差 |
-| 10 | -1 | C2PSA | `B×256×20×20` | 32 | 部分通道 attention |
-| 11 | -1 | nearest upsample ×2 | `B×256×40×40` | 16 | top-down |
-| 12 | 11,6 | Concat | `B×384×40×40` | 16 | 融合 P5 与 P4 |
-| 13 | -1 | C3k2(c3k) | `B×128×40×40` | 16 | neck P4 |
-| 14 | -1 | nearest upsample ×2 | `B×128×80×80` | 8 | top-down |
-| 15 | 14,4 | Concat | `B×256×80×80` | 8 | 融合 neck P4 与 backbone P3 |
-| 16 | -1 | C3k2(c3k) | `B×64×80×80` | 8 | Detect P3 input |
-| 17 | -1 | Conv 3×3/s2 | `B×64×40×40` | 16 | bottom-up |
-| 18 | 17,13 | Concat | `B×192×40×40` | 16 | 回融 top-down P4 |
-| 19 | -1 | C3k2(c3k) | `B×128×40×40` | 16 | Detect P4 input |
-| 20 | -1 | Conv 3×3/s2 | `B×128×20×20` | 32 | bottom-up |
-| 21 | 20,10 | Concat | `B×384×20×20` | 32 | 回融 backbone deep feature |
-| 22 | -1 | C3k2(c3k+attention) | `B×256×20×20` | 32 | Detect P5 input |
-| 23 | 16,19,22 | Detect | 见下一节 | 8/16/32 | 双分支检测头 |
-
-640 输入共有 `80² + 40² + 20² = 8400` 个候选位置。这个数字只表示候选密度；一个目标是否成为正样本仍由中心约束、task-aligned metric 和冲突处理决定。
-
-## 5. Backbone 与 neck 模块不能只背名字
-
-### Conv
-
-默认 `Conv` 是 convolution、BatchNorm 和激活的组合。stride-2 Conv 同时改变空间尺寸、有效感受野和后续候选密度。替换 stem 或下采样层时，首先核对 padding、输出奇偶尺寸、通道和目标后端算子，而不是只比较 FLOPs。
-
-### C3k2
-
-`C3k2` 继承 C2f 的 split—transform—concat 路径。固定 revision 中，它的内部单元由 `c3k` 与 `attn` 控制：普通 Bottleneck、两层 C3k，或 Bottleneck 后接 PSABlock。最后一个 P5 neck block 的 YAML 显式传入 `attn=True`；m/l/x 还会被 parser 改写 `c3k`。因此“把 C3k2 换成某 block”至少改变隐藏通道、分支数、残差条件、attention 和权重键。
-
-### SPPF with shortcut
-
-YOLO26 默认 SPPF 先用 1×1 Conv 降通道，连续三次执行同一个 5×5/s1 max pool，把原特征及三次 pooling 结果 concat 后投影；配置的第四个参数使输入输出通道相同时再加原输入。它扩展深层上下文，不恢复 P3 之前已经丢失的细节。
-
-### C2PSA
-
-`C2PSA` 把通道分成两部分，只让其中一部分经过若干 PSABlock，再 concat 投影。PSABlock 内有 attention、FFN 与残差。它的主要修改风险是 head 数与通道整除、reshape/transpose、显存和部署算子支持，不能从模块名称直接推断板端收益。
-
-### Bidirectional fusion
-
-top-down 路径把深层语义送到 P4/P3，bottom-up 路径再把定位细节聚合回 P4/P5。每次 concat 都形成接口契约：来源层、空间大小、通道顺序和消费者必须一起检查。修改 backbone 输出层而不修改这些契约，通常会在建图或权重加载阶段失败；通过建图也不证明语义对齐。
-
-## 6. Detect head：两套参数，不是一个输出做两次匹配
-
-对每个 P3/P4/P5 输入，`Detect` 建立解耦的 box head `cv2` 和 classification head `cv3`。非 legacy 分类头使用两组 depthwise 3×3 + pointwise 1×1，再用 1×1 Conv 输出 `nc` 类 logits。box head 使用两组普通 3×3 Conv，再输出 `4 × reg_max` 个通道。
-
-当 `end2end=True` 时，构造函数深拷贝 `cv2/cv3`，得到独立的 `one2one_cv2/one2one_cv3`。因此：
-
-```text
-shared P3/P4/P5
-├─ one-to-many cv2/cv3 → auxiliary training predictions
-└─ detach(P3/P4/P5) → one-to-one cv2/cv3 → inference-head training predictions
+```mermaid
+flowchart LR
+  X["x: c1×H×W"] --> C1["Conv k1<br/>c1→c2·e"] --> C2["Conv k2<br/>c2·e→c2"]
+  X -. "shortcut=true 且 c1=c2" .-> ADD((+))
+  C2 --> ADD --> Y["y: c2×H×W"]
 ```
 
-这里的 `detach` 很关键：one-to-one loss 更新 one-to-one head 参数，但不通过该分支把梯度传回 backbone/neck；shared features 主要由 one-to-many 路径提供梯度。它解释了为什么删除辅助头不只是减少参数，也会改变训练 shared features 的监督。
+`Bottleneck` 是否残差相加由 `shortcut and c1 == c2` 决定。换 block 时只保持输出 shape 不够：hidden expansion、kernel、groups、shortcut 条件和 state_dict key 都会改变。
 
-### 训练期 tensor 合同
+## 6. C2f、C3f、C3k 与 C3k2
 
-默认 `nc=80`、`reg_max=1`、640 输入时，每个分支返回：
+### 6.1 C2f 是 C3k2 的外壳
 
-```text
-boxes:  B × 4  × 8400
-scores: B × 80 × 8400
-feats:  [P3, P4, P5]
+```mermaid
+flowchart LR
+  X["x: c1"] --> CV1["cv1 1×1<br/>c1→2c"]
+  CV1 --> A["chunk 0: c"]
+  CV1 --> B["chunk 1: c"]
+  B --> U1["unit 1"] --> U2["unit 2 ... n"]
+  A --> CAT["Concat<br/>(2+n)c"]
+  B --> CAT
+  U1 --> CAT
+  U2 --> CAT
+  CAT --> CV2["cv2 1×1<br/>(2+n)c→c2"] --> Y["y: c2"]
 ```
 
-整个 Detect 训练输出是：
+`c = int(c2 × e)`。每个 unit 只消费前一个 unit 的输出，但最终 concat 保留两个初始 chunk 与所有中间输出；这就是 feature reuse 与较短梯度路径的来源。
 
-```text
-{
-  "one2many": {boxes, scores, feats},
-  "one2one":  {boxes, scores, feats}
-}
-```
+### 6.2 C3k2 只替换 unit，不改 C2f 外壳
 
-### 为什么默认没有 DFL 分布积分
-
-`reg_max=1` 使 box head 每个候选只产生 `l,t,r,b` 四个值，`DFL` 模块退化为 `Identity`。loss 中 `use_dfl=False`，回归辅助项改为对按图像大小归一化后的四边距离做加权 L1；CIoU box loss 仍然存在。代码沿用 `loss[2]` 和超参数名 `dfl`，但此时该槽位的计算语义不是 distribution focal loss。面试或修改时应区分“变量仍叫 dfl”和“实际执行 DFL 分类分布”。
-
-## 7. 标签分配与 Progressive Loss
-
-固定 revision 的检测 criterion 为 `E2ELoss`：
-
-- one-to-many 使用 TaskAlignedAssigner `topk=10`；
-- one-to-one 先以 `topk=7` 选候选，冲突处理后再以 `topk2=1` 收缩到每个 GT 的单候选；
-- task-aligned metric 为分类分数与定位重叠的联合函数，固定参数为 `alpha=0.5`、`beta=6.0`；
-- 两个分支各自计算 classification、CIoU box 和回归辅助项。
-
-Progressive Loss 在该实现中表现为两分支总 loss 权重随 epoch 更新：one-to-many 从 0.8 线性衰减到 0.1，one-to-one 从 0.2 增长到 0.9；trainer 每个 epoch 后调用一次 criterion `update()`。这不是学习率调度，也不是逐层冻结。恢复训练、改变 epoch 数或自定义 trainer 时，都要确认该状态和更新时机。
-
-STAL 的名字不能替代源码检查。这里能直接确认的是：one-to-one assigner 使用两阶段 `topk=7 → topk2=1`，且候选中心约束会把小于最小 stride 的 GT 宽高临时扩展到下一 stride 的大小后再判断中心是否落入框内。其跨数据收益仍需实验，不能从实现存在直接推出。
-
-## 8. 推理为什么 NMS-free
-
-eval 模式只把 one-to-one prediction 送入 `_inference()`：
-
-1. 以 P3/P4/P5 网格中心生成 anchor points；
-2. 把四边距离解码成 `xyxy`，再乘对应 stride；
-3. 对 class logits 做 sigmoid；
-4. 先按每个候选的最大类分数取最多 `max_det` 个候选，再在候选×类别上取全局 top-k；
-5. 返回 `B × K × 6`，字段为 `x1,y1,x2,y2,score,class_id`。
-
-这里没有基于 IoU 的 suppression。NMS-free 的成立依赖 one-to-one 训练让高分重复预测受到约束，最终代码只是 top-k 选择；它不意味着结果完全没有后处理，也不保证任意自定义训练或移植 head 都不会产生重复框。
-
-默认 `max_det=300`。输入很小时，Python 推理会把 k 限制到候选数；export 路径为了 TensorRT 常量 k 使用 exporter 预先约束后的 `max_det`。因此输出 shape、top-k 支持和动态输入能力都属于导出合同。
-
-## 9. train、eval、fuse 与 export 是四张不同的语义图
-
-| 状态 | 使用的 head | 返回内容 | 修改时的主要风险 |
+| `attn` | `c3k` | `self.m[i]` | 默认 YOLO26 使用位置 |
 |---|---|---|---|
-| train | one-to-many + one-to-one | 两套 raw dict | detach、assigner、loss 权重和梯度路径 |
-| eval, unfused | one-to-one 推理；同时保留 raw dict 供 Python 返回 | decoded top-k + raw predictions | 误把 raw 与最终结果混为同一输出 |
-| fuse | 删除 one-to-many `cv2/cv3`，并做常规 Conv/BN 等融合 | 只保留推理所需参数 | 融合后不能继续原训练合同 |
-| export | 先 deepcopy、eval、fuse，再设置 export/format | 通常为固定 top-k tensor | backend 能否表达 top-k、动态 shape 与 metadata |
+| false | false | `Bottleneck(c,c)` | layer 2、4（n/s） |
+| false | true | `C3k(c,c,n=2)` | layer 6、8、13、16、19 |
+| true | 任意 | `Bottleneck(c,c) → PSABlock(c)` | layer 22；attention 分支优先于 c3k |
 
-固定 exporter 对后端有显式例外：例如 NCNN 会禁用 end-to-end branch，benchmark 代码也对 RKNN、Paddle、ExecuTorch 等组合设置限制（Y023）。所以“YOLO26 默认 NMS-free”不能直接改写成“所有导出格式都保持相同图”。实际部署判断仍进入 [Deployment](deployment.md)。
+这解释了为什么 YAML 中全部写 `C3k2`，实际内部却有三种计算图。
 
-## 10. P2、默认与 P6 不是只差一个输出层
+### 6.3 C3k 内部
 
-| 配置 | Detect inputs | 640 时位置数 | 结构变化 | 先验证什么 |
-|---|---|---:|---|---|
-| `yolo26-p2.yaml` | P2/P3/P4/P5 | 34,000 | top-down 多到 P2，并增加对应 bottom-up 回路 | 小目标召回、显存、延迟、正样本与误检 |
-| `yolo26.yaml` | P3/P4/P5 | 8,400 | 默认三尺度 | 通用基线与目标尺寸分层 |
-| `yolo26-p6.yaml` | P3/P4/P5/P6 | 8,500 | backbone 增加 P6，neck 改成四尺度 | 大目标、输入尺寸、深层算力与部署支持 |
-
-候选位置数按方形 640 输入计算。P2 增加高分辨率候选不保证小目标改善；P6 增加深层尺度也不保证大目标收益。官方是否提供对应预训练权重、训练配方和目标硬件结果应另行确认。
-
-## 11. 结构修改影响图
-
-| 想改什么 | 必须同步检查 | 最小结构 Oracle | 任务/工程 Oracle |
-|---|---|---|---|
-| 增删 P2/P6 输出 | backbone save list、neck concat、Detect 输入数、stride、assigner、位置数 | 三/四尺度 shape 与 forward/backward | 尺寸分层 AP/recall、显存、延迟 |
-| 替换 C3k2 | hidden channel、shortcut、parser 参数、state_dict key、export op | shape、参数加载报告、梯度非零 | 同预算消融与目标后端支持 |
-| 修改通道或 scale | width/max_channels、concat 求和、attention head 数、Detect c2/c3 | 每层 channel ledger | 参数/FLOPs、显存、延迟、精度 |
-| 删除 C2PSA/末端 attention | 残差与模块边界、权重兼容、部署图 | 替换前后目标节点 shape | 精度、延迟和首个数值分歧 |
-| 改 `reg_max` | box 输出通道、DFL module、bbox loss、checkpoint、decode | raw box shape 与 decode 单测 | 定位误差、量化与导出一致性 |
-| 改 one-to-one head | deep copy、detach、assigner、postprocess、fuse | train/eval 返回合同 | 重复框、召回、top-k 稳定性 |
-| 删除 one-to-many head | shared feature 梯度、Progressive Loss、checkpoint、fuse | backbone 梯度和 loss 项 | 从头训练收敛与最终任务指标 |
-| 修改分类头 | depthwise op、类别数、bias init、score 解释 | 每尺度 logits shape | 校准、长尾类别与后端算子 |
-| 改 top-k/max_det | postprocess、export 常量、backend、输出 shape | K 边界与字段顺序 | crowded scene recall 与端到端延迟 |
-
-结构能运行只是第一道门。接受修改至少需要独立任务指标；涉及导出或板端时，还要比较 source float、export float 与目标 runtime 的对应语义阶段。
-
-## 12. 建议的源码阅读顺序
-
-```text
-cfg/models/26/yolo26.yaml
-→ nn/tasks.py::parse_model
-→ nn/modules/conv.py::Conv / DWConv
-→ nn/modules/block.py::C3k2 / SPPF / C2PSA / PSABlock
-→ nn/modules/head.py::Detect
-→ utils/tal.py::TaskAlignedAssigner
-→ utils/loss.py::v8DetectionLoss / E2ELoss
-→ nn/tasks.py::DetectionModel.init_criterion / BaseModel.fuse
-→ engine/trainer.py::criterion.update
-→ engine/exporter.py
-→ models/yolo/detect/predict.py
+```mermaid
+flowchart LR
+  X["x: c"] --> P1["cv1 1×1"] --> B1["Bottleneck k×k"] --> B2["Bottleneck k×k"]
+  X --> P2["cv2 1×1 bypass"]
+  B2 --> CAT["Concat"]
+  P2 --> CAT
+  CAT --> P3["cv3 1×1"] --> Y["y: c"]
 ```
 
-阅读每个函数时记录四件事：输入输出 shape、训练/推理分支、梯度是否截断、导出或融合是否改写模块。只读类定义而不追调用者，容易把可选路径误当默认路径。
+YOLO26 中 C3k2 创建 C3k 时固定内部 `n=2`，默认 `k=3`。C3k 继承 C3，但把 C3 的标准 `(1×1,3×3)` Bottleneck 改成 `(k×k,k×k)`。
 
-## 13. 学习与修改的最小验证阶梯
+### 6.4 C3f 为什么不是 C3k2
 
-1. **纸面重建**：不看 YAML 画出 P3/P4/P5 来源、两次 top-down 和两次 bottom-up；再与固定配置逐层比对。
-2. **shape hook**：已用 640 方形合成输入核对 layer 0–22、stride、eval 与 raw branch shape；下一步补一个非方形合法输入并保存可寻址输出。
-3. **输出合同**：分别在 train、eval、fuse、export 状态记录类型、shape、字段和 head 是否存在。
-4. **梯度 Oracle**：对一个合成 batch 反向传播，确认 one-to-one 输入 detach 后 shared feature 梯度来源符合预期。
-5. **最小改造**：一次只改变一个接口，例如添加 P2 或改变 `reg_max`；先跑 forward/backward 和权重加载报告。
-6. **导出对齐**：固定输入，比较 decoded box、score 和 class，不用最终 AP 掩盖接口错误。
-7. **任务验收**：用固定数据、阈值规则和目标尺寸切片比较修改前后；真实性能结果写入 `engineering/cases/`，本页只回写可复用结论。
+`C3f` 对输入做两个独立 1×1 projection：`cv2(x)` 直接保留，`cv1(x)` 进入连续 Bottleneck；最后 concat 两个起始分支和每个 Bottleneck 输出，再由 `cv3` 投影。C3k2 则只用一个 `cv1` 产生 `2c` 后 chunk，并通过可选 unit 改变内部计算。两者 shape 可以相同，但参数键、分支投影和内部 unit 不同，不能因名称相近直接互换权重。
 
-## 14. 面试问题应从机制推导
+## 7. SPPF：串行 pooling 与外层残差
 
-### YOLO26 相对传统 NMS-based YOLO 的核心改变是什么？
+```mermaid
+flowchart LR
+  X["x: c1"] --> R["cv1 1×1<br/>c1→c1/2<br/>act=False"]
+  R --> M1["MaxPool 5×5 s1"] --> M2["MaxPool 5×5 s1"] --> M3["MaxPool 5×5 s1"]
+  R --> CAT["Concat 4 branches"]
+  M1 --> CAT
+  M2 --> CAT
+  M3 --> CAT
+  CAT --> P["cv2 1×1→c2"] --> ADD((+))
+  X -. "shortcut && c1=c2" .-> ADD
+  ADD --> Y["y"]
+```
 
-不是简单删除一个函数。它训练独立 one-to-one inference head，并用稀疏匹配约束重复预测；推理时解码该分支后执行 score top-k，而不做 IoU suppression。辅助 one-to-many head 仍在训练 shared representation，融合时才被删除。
+三次串行 5×5 pooling 近似获得 5、9、13 的上下文范围。YOLO26 默认 `[1024,5,3,true]` 开启最外层 shortcut，这与旧版只讲“SPPF concat”不同。它扩大深层上下文，但不会恢复此前下采样丢掉的像素信息。
 
-### one-to-one 分支为什么对输入 feature 做 detach？
+## 8. C2PSA、PSABlock 与 Attention
 
-固定实现让 one-to-one head 学习自己的参数，但不让它的稀疏监督直接改写 shared backbone/neck；shared feature 的主要训练信号来自 one-to-many 分支。代价是辅助头和 Progressive Loss 成为训练合同的一部分。
+```mermaid
+flowchart LR
+  X["x: C×H×W"] --> CV1["1×1 Conv<br/>C→2c"]
+  CV1 --> A["a: c<br/>bypass"]
+  CV1 --> B["b: c"]
+  B --> ATT["Attention"] --> ADD1((+))
+  B --> ADD1
+  ADD1 --> FFN["1×1 c→2c<br/>1×1 2c→c"] --> ADD2((+))
+  ADD1 --> ADD2
+  A --> CAT["Concat"]
+  ADD2 --> CAT
+  CAT --> CV2["1×1 Conv<br/>2c→C"] --> Y["y"]
+```
 
-### `reg_max=1` 是否表示 DFL 只有一个 bin？
+Attention 的内部张量是：
 
-在接口上 `reg_max` 为 1，但代码不会执行单 bin DFL：DFL module 是 Identity，`BboxLoss` 进入无 DFL 分支，对归一化四边距离计算 L1。回答时应以控制流为准，而不是变量名。
+```text
+x: B×C×H×W, N=H×W
+q,k: B×heads×key_dim×N
+v:   B×heads×head_dim×N
+attention matrix: B×heads×N×N
+output = projection(v @ softmax(qᵀk)) + depthwise positional encoding
+```
 
-### P2 为什么可能改善小目标，也可能变差？
+`head_dim=C/heads`，`key_dim=int(head_dim×0.5)`。YOLO26n 的 layer 10 在 20×20、hidden 128、2 heads 上运行一个 PSABlock；layer 22 的 C3k2 也在 20×20 上运行 Bottleneck+PSABlock。
 
-P2 提供更密集、高分辨率候选，但同时增加计算、正负候选、显存和背景混淆。若输入中目标已经没有可分信息、标签不完整或 assigner 没给出有效正样本，增加 P2 不会自动修复问题。
+这里有一个重要修改经验：把同样 attention 从 P5 的 20×20 移到 P3 的 80×80，会让 N 从 400 变成 6400，`N²` attention matrix 元素数放大 256 倍。参数量变化可能不大，显存与延迟却可能失控；必须实测而不能只看 FLOPs 摘要。
 
-### 为什么 NMS-free 不等于零后处理？
+## 9. Neck：为什么 concat 是结构修改的高风险边界
 
-YOLO26 仍需 anchor-point decode、stride 还原、sigmoid、两级 top-k 和字段组装；只是没有 IoU-based NMS。不同 backend 对 top-k 的支持还可能改变导出路线。
+```mermaid
+flowchart LR
+  P5["Backbone P5"] --> U1["↑2"] --> C4["Concat P4"] --> N4["Neck P4"]
+  P4["Backbone P4"] --> C4
+  N4 --> U2["↑2"] --> C3["Concat P3"] --> N3["Detect P3"]
+  P3["Backbone P3"] --> C3
+  N3 --> D4["Conv s2"] --> C4B["Concat Neck P4"] --> O4["Detect P4"]
+  N4 --> C4B
+  O4 --> D5["Conv s2"] --> C5B["Concat Backbone P5"] --> O5["Detect P5"]
+  P5 --> C5B
+```
 
-### 修改一个 backbone block 后为什么不能只看模型能否 forward？
+修改 backbone 输出通道时，至少同步检查四项：对应 concat 的通道和空间尺寸；后续 C3k2 的 `c1` 自动推导是否符合预期；Detect 输入通道；预训练权重的匹配报告。模型能建图只证明 shape 合法，不证明旧权重加载到了预期位置。
 
-forward 只证明当前 shape 可连接。还需检查 state_dict、梯度路径、训练/推理双头、融合、导出算子、数值对齐和任务指标；任何一项都可能成为真正失效边界。
+## 10. Detect：独立双 head 与梯度边界
 
-## 15. 当前未知项与降级条件
+每个尺度的 box/classification 路径为：
 
-- 已独立运行 640 合成输入的 shape 与 eval 输出检查，但输出未持久化；梯度、fuse 和 export Oracle 尚未执行；
-- 技术报告中的命名与收益声明尚未逐项映射到固定源码和可复现实验；
-- 在线文档可能在不改变 URL 的情况下更新；固定 commit 才是实现事实锚点；
-- P2/P6、其他任务 head、后续 release 和第三方移植必须建立自己的输出合同；
-- 若固定链接、源码行为或独立运行结果与本文不符，应立即修正文档并降低相应结论的 evidence/confidence，不保留“只升不降”的叙事。
+```mermaid
+flowchart TB
+  F["feature Pi"]
+  subgraph BOX["box head cv2"]
+    B1["Conv 3×3"] --> B2["Conv 3×3"] --> B3["Conv 1×1<br/>4×reg_max"]
+  end
+  subgraph CLS["class head cv3, non-legacy"]
+    C1["DWConv 3×3 + Conv 1×1"] --> C2["DWConv 3×3 + Conv 1×1"] --> C3["Conv 1×1<br/>nc logits"]
+  end
+  F --> B1
+  F --> C1
+```
 
-下一道晋级门：本人审查逐层图；运行至少一次 shape、train/eval、backward、fuse 和 ONNX 输出合同检查；把结果链接为独立证据后再考虑 `validated`。
+当 YAML 设置 `end2end: true`，构造函数 deep-copy `cv2/cv3`，产生参数独立的 one-to-one head：
+
+```mermaid
+flowchart LR
+  F["shared P3/P4/P5"] --> O2M["one-to-many cv2/cv3"] --> LM["dense loss"]
+  F --> DETACH["detach during training"] --> O2O["one-to-one cv2/cv3"] --> LO["sparse loss"]
+  LM --> PL["Progressive weighting"]
+  LO --> PL
+  PL --> OPT["optimizer update"]
+  O2O -. "eval/export" .-> OUT["decode + top-k"]
+```
+
+本地梯度 probe 观察到：只对 one-to-one raw 输出反向时，one-to-one head 有梯度而 backbone layer 0 为 0；只对 one-to-many raw 输出反向时，one-to-many head 与 backbone 都有梯度（E001）。这验证的是 `detach` 路径，不等价于真实数据训练质量。
+
+## 11. `reg_max=1`：变量还叫 dfl，计算已经不是 DFL
+
+默认 YOLO26：
+
+```text
+box head → 4 scalars per location → l,t,r,b distance → dist2bbox
+```
+
+YOLO11 常见路径：
+
+```text
+box head → 4×16 logits → per-side softmax expectation → l,t,r,b → dist2bbox
+```
+
+`reg_max=1` 时 `Detect.dfl` 是 `Identity`，box loss 仍包含 CIoU，同时把原来 loss 数组中的第三槽改为归一化 l/t/r/b 的加权 L1。名称仍沿用 `dfl`，但语义已经改变。本地把 YAML 临时改为 `reg_max=16` 后，128 输入的 raw box channel 从 4 变为 64，decoder 从 `Identity` 变为 `DFL`（E001）。
+
+技术报告的受控实验指出：在其 YOLO26s/COCO 配置中，去掉 DFL 在 640 下 AP 从 46.0 到 46.3，在 1280 下从 49.8 到 51.1，主要增益出现在 large-object AP；这是作者报告，不是任意私有任务的结论（Y023）。
+
+## 12. Assigners、STAL 与 Progressive Loss
+
+```mermaid
+flowchart TB
+  GT["GT boxes/classes"]
+  P["decoded predictions"]
+  M["score^0.5 × CIoU^6"]
+  GT --> GEO["center-inside-GT filter<br/>STAL only adjusts tiny-box surrogate"]
+  P --> M
+  GEO --> M
+  M --> T10["one-to-many topk=10"]
+  M --> T7["one-to-one topk=7"] --> T1["conflict resolution + topk2=1"]
+  T10 --> LM["box + cls + regression auxiliary"]
+  T1 --> LO["box + cls + regression auxiliary"]
+  LM --> W["α(t): 0.8→0.1"]
+  LO --> W2["1-α(t): 0.2→0.9"]
+  W --> SUM["total loss"]
+  W2 --> SUM
+```
+
+STAL 只为 candidate filtering 构造 surrogate box：默认 strides `[8,16,32]` 时，小于 8 像素的宽或高在筛候选时临时扩到 16；原始 GT 仍用于后续 matching 和 regression。它解决“tiny box 内没有 anchor center”的零正样本故障，不等于增加 P2，也不保证 tiny object 已有足够图像信息。
+
+Progressive Loss 每个 epoch 更新一次权重。当前 trainer 对 resume 还会按起始 epoch 恢复 criterion update 状态；自定义 trainer 若漏掉 `criterion.update()` 或恢复点，会改变真实训练配方。
+
+## 13. 推理、top-k 与 `end2end=False`
+
+```mermaid
+flowchart LR
+  RAW["one-to-one raw<br/>boxes + class logits"] --> GRID["anchor points + stride"] --> XYXY["decode xyxy"] --> SIG["sigmoid"] --> K1["per-anchor max-class top-k"] --> K2["candidate×class global top-k"] --> OUT["B×K×6<br/>x1 y1 x2 y2 score class"]
+```
+
+默认 `K≤300`，没有 IoU-based suppression，但仍有 decode、sigmoid 和两级 top-k，所以 NMS-free 不等于零后处理。`v8.4.120` 允许 predict/val/export 显式设置 `end2end=False`，改用 one-to-many raw output 和 NMS。640、80 类时常见合同是：
+
+| 路径 | 输出 | 后处理 |
+|---|---|---|
+| `end2end=True` | `(B,300,6)` | 图内 decode + top-k，无 IoU NMS |
+| `end2end=False` | `(B,84,8400)` | 图外 confidence/class filtering + NMS |
+
+选择 head 是部署与任务 operating point，不是单向“新版一定更好”。第一方文档也明确 one-to-many 通常略高精度、但有 NMS 成本（Y023）。
+
+## 14. train、eval、fuse、export 是四张图
+
+```mermaid
+stateDiagram-v2
+  [*] --> Train
+  Train: 双 head raw dict
+  Train: one-to-one feature detach
+  Train --> Eval
+  Eval: one-to-one decoded top-k
+  Eval: Python 同时可返回 raw dict
+  Eval --> Fuse
+  Fuse: Conv+BN 合并
+  Fuse: 删除 one-to-many cv2/cv3
+  Fuse --> Export
+  Export: 设置 format/dynamic/max_det
+  Export: 后端可能强制 end2end=false
+```
+
+本地 smoke test 中，随机初始化 YOLO26n 从 2,572,280 参数降到 2,408,932，one-to-many head 被移除、one-to-one 保留；同一输入 fuse 前后最大绝对输出差为 0（E001）。这个数只验证固定环境下的结构与数值 smoke test，不是训练权重精度结论。
+
+当前 exporter 会对 RKNN、NCNN、ExecuTorch、Paddle、IMX、EdgeTPU、QNN 强制关闭 end-to-end，因为这些路径不支持所需 top-k；LiteRT INT8、旧 TensorRT 和部分 JetPack/TensorRT INT8 组合也有显式降级。导出后必须以真实 output shape 和 metadata 判断走了哪条 head，不能只看模型名。
+
+## 15. P2、默认、P6
+
+| 配置 | Strides | 640 候选数 | 权重状态 | 主要假设 | 新成本 |
+|---|---|---:|---|---|---|
+| `yolo26-p2.yaml` | 4/8/16/32 | 34,000 | YAML-only，无 scale-specific 官方权重 | 更密候选帮助小目标 | 显存、延迟、背景候选与误检 |
+| `yolo26.yaml` | 8/16/32 | 8,400 | 有正式权重 | 默认平衡 | 可能遗漏极小目标候选 |
+| `yolo26-p6.yaml` | 8/16/32/64 | 8,500 | YAML-only，无 scale-specific 官方权重 | 大输入/大目标需要更深尺度 | 更深 backbone/neck 与新训练成本 |
+
+三种配置的 stride、raw shape 和最终 `(1,300,6)` 已由本地合成输入运行核对（E001）。P2/P6 不是在预训练模型末尾多接一层即可；官方没有对应 scale 权重，必须训练或微调并重新建立基线。
+
+## 16. 第一方消融告诉我们什么
+
+技术报告从 YOLO11s 到 YOLO26s 的增量表显示（COCO、作者口径）：
+
+| 增量 | E2E AP | Non-E2E AP | 能支持的判断 |
+|---|---:|---:|---|
+| YOLO11s baseline | — | 47.0 | 起点 |
+| remove DFL | — | 46.4 | 单独删 DFL 有精度代价 |
+| add L1 | — | 46.6 | 直接回归监督回收部分差距 |
+| add STAL | — | 46.8 | 该配置下继续回收 |
+| backbone/neck refinement | — | 47.0 | 末端 attention 等改动回到 baseline |
+| enable E2E | 46.4 | 47.0 | one-to-one 与 one-to-many 有差距 |
+| Progressive Loss | 46.7 | 47.2 | 两条 head 都变化 |
+| MuSGD | 47.1 | 47.6 | optimizer 是最终结果的一部分 |
+| Objects365 pretraining | 47.4 | 48.0 | 预训练数据贡献不可归因给结构 |
+| hyperparameter search | 47.8 | 48.6 | 最终数字不是“只换架构”的结果 |
+
+最重要的实践结论是：不能把 YOLO26 最终提升全部归因给某个 block。结构、L1、STAL、双 head、loss 调度、optimizer、Objects365 预训练和超参共同构成报告结果；自己的改造必须做受控消融。
+
+## 17. 公开实践证据与可迁移教训
+
+下面是 Ultralytics 官方仓库中的公开 issue/maintainer 回应。它们是现场信号，不是跨环境定律（Y029）。
+
+| 公开实践 | 当前可支持 | 不应过度外推 | 可迁移动作 |
+|---|---|---|---|
+| ONNX end-to-end 输出疑问 #24697 | `(1,300,6)` 与 `(1,84,8400)` 可快速区分两条 head；混装 package/import path 会制造假差异 | Python 版本本身决定 end2end | 同时记录 `ultralytics.__version__`、`ultralytics.__file__`、输出 shape 和 metadata |
+| `classes + max_det` 丢框 #25044 | 旧版本在 top-k 后过滤类别会静默丢框；当前 predictor 保持 head top-k≥300 再过滤 | 所有 release 都仍有此 bug | 迁移时为类别过滤、max_det 组合建立回归测试 |
+| TensorRT partial batch #25753 | 静态 export 不能接收不同 batch；`dynamic=True` 时 batch 才是最大值 | layer 2 Split 是 YOLO26 特有缺陷 | 固定/动态 profile、实际 runtime batch 与 padding 必须一起记录 |
+| TensorRT INT8 score compression #24668 | 一个公开案例中排名和 peak F1 尚可，但绝对 score 被压缩；旧 calibration cache 会干扰复测 | NMS-free 天生造成 score compression | 删除旧 cache、重建 calibration、画各模型自己的 PR/F1-score 曲线，不复用阈值 |
+| RKNN INT8 #24613 | 官方从 `8.4.59` 起加入 calibration-backed INT8；当前 exporter 仍会关闭 end-to-end top-k path | “支持 RKNN INT8”等于保留默认 E2E 图 | 核对版本、raw output、CPU NMS、校准集和目标 SoC |
+| subtle texture/defect #23794 | 社区案例提示 one-to-one 与 one-to-many 可能在细微目标上不同 | YOLO11 一定更懂纹理或 YOLO26 只看边缘 | 同一权重/数据分别 val `end2end=true/false`，再检查标签和目标像素 |
+
+## 18. 本地可复现实践
+
+完整命令、环境、失败尝试和结果见 [YOLO26 architecture smoke tests](../../../../engineering/cases/yolo26-architecture-smoke-tests.md)；脚本见 [`yolo26_architecture_smoke_test.py`](../../../../engineering/cases/yolo26_architecture_smoke_test.py)（E001）。当前已覆盖：
+
+- 默认、P2、P6 的逐层/输出 shape；
+- C3k2 在各层选择的真实内部 unit；
+- one-to-one detach 的梯度边界；
+- `reg_max=1→16` 的 raw channel 和 decoder 改变；
+- fuse 前后参数、head 移除和输出一致性；
+- ONNX 图包含 TopK、不包含 NonMaxSuppression，输出 `(1,300,6)`。
+
+尚未覆盖真实权重、数据训练、AP、延迟、量化和目标硬件，因此不能把这些 smoke tests 当成模型效果验证。
+
+## 19. 修改结构时的最小闭环
+
+### 增加 P2
+
+1. 先统计网络输入上的目标宽高，而不是从“目标很小”直接跳到 P2；
+2. 以官方 P2 YAML 为结构参考，核对 top-down、bottom-up、Detect 四个输入与 strides；
+3. 运行 shape、forward/backward、候选数和显存检查；
+4. 从头训练或明确权重加载缺失项；
+5. 按目标尺寸比较 AP/recall、误检、延迟，而不是只看总 mAP。
+
+### 替换 C3k2 内部 block
+
+1. 明确替换外壳还是 `self.m` unit；
+2. 固定 `c1/c2/e/n/shortcut/g` 合同；
+3. 检查 parser 是否需要注册新 module 和 repeat 规则；
+4. 输出 state_dict missing/unexpected keys；
+5. 单独验证 export operator、显存和延迟；
+6. 采用同数据、同训练预算的受控消融。
+
+### 移动或增加 attention
+
+1. 计算目标层 `N=H×W`，先估算 `N²` attention matrix；
+2. 核对 hidden channel、head 数和整除条件；
+3. 分别测参数、峰值显存、训练吞吐和目标 runtime；
+4. 保留无 attention 与原 P5 attention 两个基线。
+
+### 修改 `reg_max`
+
+1. 同步 box head 输出 `4×reg_max`、DFL decoder 和 BboxLoss；
+2. 不加载不兼容的 box-head 权重并假装完全继承；
+3. 检查 raw/decode/export shape；
+4. 按目标尺寸分析定位误差，尤其是大目标和高分辨率；
+5. 比较导出算子、量化误差与真实延迟。
+
+### 修改 one-to-one/head postprocess
+
+1. 同时检查 deep-copy、training detach、assigner、Progressive Loss、fuse 和 exporter；
+2. 构造重复框、密集目标、类别过滤与小 `max_det` 的单测；
+3. 分别验证 E2E 与 non-E2E 输出，不复用同一阈值假设；
+4. 目标后端若不支持 top-k，明确选择 raw output + NMS，而不是静默降级。
+
+## 20. 面试推导检查
+
+- 为什么 YOLO26 的 NMS-free 不是“删除 NMS”这么简单？——需要 one-to-one 参数、稀疏 assignment、渐进 loss 和 top-k 输出合同共同成立。
+- 为什么 one-to-one feature 要 detach？——让稀疏 head 学参数，但 shared feature 主要由 dense supervision 训练；代价是辅助 head 不能随便删。
+- 为什么 `reg_max=1` 不应回答成“单 bin DFL”？——控制流进入 Identity + L1 direct regression，而不是 softmax expectation。
+- 为什么 P2 与 STAL 不是一回事？——P2 增加高分辨率候选；STAL 只修改 tiny GT 的候选筛选几何。
+- 为什么 attention 放在 P5？——全局交互成本随 `N²` 增长，低分辨率位置更可控。
+- 为什么最终 AP 不能归因给 C3k2？——报告本身同时改变 loss、assigner、optimizer、预训练和超参。
+- 为什么导出后先看 shape？——`(B,300,6)` 与 `(B,4+nc,N)` 直接暴露 head 与后处理合同。
+
+## 21. 当前证据边界与下一道门
+
+- 总体结构、模块控制流和输出合同有固定源码指针；shape、梯度、fuse 与 ONNX 有本地 smoke test；
+- 第一方消融仍是模型发布方报告，尚无本仓库独立训练复现；
+- GitHub issue 只作为实践信号，必须保留版本、环境、是否已修复和复现状态；
+- 真实结构改造、训练、量化、延迟与目标硬件结果尚未执行；
+- 本页继续保持 `working / partial / owner_review: pending`。
+
+晋级到 `validated` 至少需要：本人审查图与术语；固定真实权重和数据；完成一个受控结构改造；保存训练/评测/导出原始证据；用独立任务 Oracle 判断接受或回滚。

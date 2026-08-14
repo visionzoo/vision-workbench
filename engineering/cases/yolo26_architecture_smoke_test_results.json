@@ -1,0 +1,57 @@
+{
+  "recorded_at": "2026-08-14",
+  "source": {
+    "release": "v8.4.120",
+    "commit": "b103ba8d0944bfd8de69bfded9778ac5daadd956"
+  },
+  "environment": {
+    "python": "3.10.19",
+    "torch": "2.5.1+cu121",
+    "platform": "Linux 7.0.0-28-generic x86_64"
+  },
+  "default": {
+    "strides": [8.0, 16.0, 32.0],
+    "final": [1, 300, 6],
+    "one2many_boxes": [1, 4, 8400],
+    "one2many_scores": [1, 80, 8400],
+    "layers": {
+      "0": [1, 16, 320, 320], "1": [1, 32, 160, 160], "2": [1, 64, 160, 160],
+      "3": [1, 64, 80, 80], "4": [1, 128, 80, 80], "5": [1, 128, 40, 40],
+      "6": [1, 128, 40, 40], "7": [1, 256, 20, 20], "8": [1, 256, 20, 20],
+      "9": [1, 256, 20, 20], "10": [1, 256, 20, 20], "11": [1, 256, 40, 40],
+      "12": [1, 384, 40, 40], "13": [1, 128, 40, 40], "14": [1, 128, 80, 80],
+      "15": [1, 256, 80, 80], "16": [1, 64, 80, 80], "17": [1, 64, 40, 40],
+      "18": [1, 192, 40, 40], "19": [1, 128, 40, 40], "20": [1, 128, 20, 20],
+      "21": [1, 384, 20, 20], "22": [1, 256, 20, 20]
+    },
+    "c3k2_units": {
+      "2": ["Bottleneck"], "4": ["Bottleneck"], "6": ["C3k"], "8": ["C3k"],
+      "13": ["C3k"], "16": ["C3k"], "19": ["C3k"], "22": ["Sequential"]
+    },
+    "layer22_inner": ["Bottleneck", "PSABlock"]
+  },
+  "p2": {"strides": [4.0, 8.0, 16.0, 32.0], "one2many_boxes": [1, 4, 34000], "final": [1, 300, 6]},
+  "p6": {"strides": [8.0, 16.0, 32.0, 64.0], "one2many_boxes": [1, 4, 8500], "final": [1, 300, 6]},
+  "gradient": {
+    "one2one_probe": {"backbone_layer0": 0.0, "one2many_head": 0.0, "one2one_head": 37.9896507},
+    "one2many_probe": {"backbone_layer0": 7.9043102, "one2many_head": 39.7382507, "one2one_head": 0.0}
+  },
+  "regression": {
+    "reg_max_1": {"raw_boxes": [1, 4, 336], "decoder": "Identity"},
+    "reg_max_16": {"raw_boxes": [1, 64, 336], "decoder": "DFL"}
+  },
+  "fuse": {
+    "parameters_before": 2572280,
+    "parameters_after": 2408932,
+    "one2many_removed": true,
+    "one2one_retained": true,
+    "max_abs_output_difference": 0.0
+  },
+  "onnx": {
+    "input_size": [1, 3, 320, 320],
+    "output_dims": [1, 300, 6],
+    "has_topk": true,
+    "has_nms": false,
+    "artifact_persisted": false
+  }
+}

@@ -26,12 +26,13 @@
 | Y020 | YOLOv12 | [paper](https://arxiv.org/abs/2502.12524), [repository](https://github.com/sunsmarterjie/yolov12) |
 | Y021 | YOLOE | [paper](https://arxiv.org/abs/2503.07465), [repository](https://github.com/THU-MIG/yoloe) |
 | Y022 | YOLOv13 | [paper](https://arxiv.org/abs/2506.17733), [repository](https://github.com/iMoonLab/yolov13) |
-| Y023 | YOLO26 / YOLOE-26 | [YOLO26 documentation](https://docs.ultralytics.com/models/yolo26/), [technical report](https://arxiv.org/abs/2606.03748), [YOLOE documentation](https://docs.ultralytics.com/models/yoloe/), [Ultralytics 8.4.2 source at `486342c`](https://github.com/ultralytics/ultralytics/tree/486342c195c28c739a033f599bbbb720d749f3d0), [default YAML](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/cfg/models/26/yolo26.yaml), [Detect head](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/nn/modules/head.py), [loss](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/utils/loss.py), [assigner](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/utils/tal.py), [model parser](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/nn/tasks.py), [exporter](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/engine/exporter.py) |
+| Y023 | YOLO26 / YOLOE-26 | [YOLO26 documentation](https://docs.ultralytics.com/models/yolo26/), [technical report](https://arxiv.org/abs/2606.03748), [YOLOE documentation](https://docs.ultralytics.com/models/yoloe/), [Ultralytics v8.4.120 source at `b103ba8d`](https://github.com/ultralytics/ultralytics/tree/b103ba8d0944bfd8de69bfded9778ac5daadd956), [default/P2/P6 YAML](https://github.com/ultralytics/ultralytics/tree/b103ba8d0944bfd8de69bfded9778ac5daadd956/ultralytics/cfg/models/26), [blocks](https://github.com/ultralytics/ultralytics/blob/b103ba8d0944bfd8de69bfded9778ac5daadd956/ultralytics/nn/modules/block.py), [Detect head](https://github.com/ultralytics/ultralytics/blob/b103ba8d0944bfd8de69bfded9778ac5daadd956/ultralytics/nn/modules/head.py), [loss](https://github.com/ultralytics/ultralytics/blob/b103ba8d0944bfd8de69bfded9778ac5daadd956/ultralytics/utils/loss.py), [assigner](https://github.com/ultralytics/ultralytics/blob/b103ba8d0944bfd8de69bfded9778ac5daadd956/ultralytics/utils/tal.py), [model parser](https://github.com/ultralytics/ultralytics/blob/b103ba8d0944bfd8de69bfded9778ac5daadd956/ultralytics/nn/tasks.py), [exporter](https://github.com/ultralytics/ultralytics/blob/b103ba8d0944bfd8de69bfded9778ac5daadd956/ultralytics/engine/exporter.py), [earlier v8.4.2 anchor](https://github.com/ultralytics/ultralytics/tree/486342c195c28c739a033f599bbbb720d749f3d0) |
 | Y024 | MMYOLO | [repository](https://github.com/open-mmlab/mmyolo), [documentation](https://mmyolo.readthedocs.io/) |
 | Y025 | RKNN Model Zoo | [repository](https://github.com/airockchip/rknn_model_zoo) |
 | Y026 | YOLOv5-Lite | [repository](https://github.com/ppogg/YOLOv5-Lite) |
 | Y027 | Ultralytics export | [export documentation](https://docs.ultralytics.com/modes/export/), [benchmark documentation](https://docs.ultralytics.com/modes/benchmark/) |
 | Y028 | YOLO26 Pose | [pose documentation](https://docs.ultralytics.com/tasks/pose/), [`Pose26` head at `81d076f8`](https://github.com/ultralytics/ultralytics/blob/81d076f8c38a49126cc1d5be369c8c107ec69789/ultralytics/nn/modules/head.py), [`PoseLoss26` at `81d076f8`](https://github.com/ultralytics/ultralytics/blob/81d076f8c38a49126cc1d5be369c8c107ec69789/ultralytics/utils/loss.py) |
+| Y029 | YOLO26 public practice signals | Ultralytics issues: [E2E/raw output confusion #24697](https://github.com/ultralytics/ultralytics/issues/24697), [class filter and max_det #25044](https://github.com/ultralytics/ultralytics/issues/25044), [TensorRT partial batch #25753](https://github.com/ultralytics/ultralytics/issues/25753), [INT8 score compression #24668](https://github.com/ultralytics/ultralytics/issues/24668), [RKNN INT8 support #24613](https://github.com/ultralytics/ultralytics/issues/24613), [subtle-texture field report #23794](https://github.com/ultralytics/ultralytics/issues/23794) |
 
 ## Y019 事实—来源边界
 
@@ -47,11 +48,12 @@
 
 | 判断 | 直接来源 | 能支持 | 不能支持 |
 |---|---|---|---|
-| 默认 P3/P4/P5 拓扑、scale 与 `reg_max=1` | 固定 `yolo26.yaml` 与 parser | 该 revision 配置解析得到的结构合同 | 后续 release、其他任务或真实运行结果 |
+| 默认 P3/P4/P5 拓扑、scale 与 `reg_max=1` | `v8.4.120` 固定 `yolo26.yaml`、parser 与本地 smoke test | 该 revision 配置解析和运行时 shape 得到的结构合同 | 后续 release、其他任务、训练精度或目标 runtime |
 | one-to-many/one-to-one 双 head、detach、decode 与 top-k | 固定 `head.py` | 该 revision Detect 的 train/eval 控制流 | 任意导出 backend 都保持同一执行图 |
 | Progressive Loss 与两类 assigner | 固定 `loss.py`、`tal.py`、trainer | 权重调度、top-k 和候选筛选代码路径 | 在自有数据上的收益或收敛结果 |
 | fuse 删除辅助 head、export backend 例外 | 固定 `tasks.py` 与 exporter | 该 revision 的融合和显式限制 | 目标 runtime 已正确支持或数值一致 |
 | 技术动机、公开指标和格式支持 | 报告与在线文档 | 第一方披露的对应口径 | 本人复测、未披露配置或后续页面状态 |
+| 部署故障、分数漂移和用户体验 | Y029 public issues | 可转化为回归测试的现场观察与版本线索 | 普遍性、根因、发生率或当前版本仍可复现 |
 
 ## Y028 事实—来源边界
 
