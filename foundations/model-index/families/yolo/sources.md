@@ -1,6 +1,6 @@
 # Sources
 
-访问日期：2026-08-03。Source ID 让具体判断能回到原始资料。第一方只对对应分支和版本负责，不存在覆盖全部 YOLO 的统一官方。
+访问日期：2026-08-14。Source ID 让具体判断能回到原始资料。第一方只对对应分支和版本负责，不存在覆盖全部 YOLO 的统一官方。
 
 | ID | 分支/用途 | 第一方资料 |
 |---|---|---|
@@ -26,7 +26,7 @@
 | Y020 | YOLOv12 | [paper](https://arxiv.org/abs/2502.12524), [repository](https://github.com/sunsmarterjie/yolov12) |
 | Y021 | YOLOE | [paper](https://arxiv.org/abs/2503.07465), [repository](https://github.com/THU-MIG/yoloe) |
 | Y022 | YOLOv13 | [paper](https://arxiv.org/abs/2506.17733), [repository](https://github.com/iMoonLab/yolov13) |
-| Y023 | YOLO26 / YOLOE-26 | [YOLO26 documentation](https://docs.ultralytics.com/models/yolo26/), [technical report](https://arxiv.org/abs/2606.03748), [YOLOE documentation](https://docs.ultralytics.com/models/yoloe/) |
+| Y023 | YOLO26 / YOLOE-26 | [YOLO26 documentation](https://docs.ultralytics.com/models/yolo26/), [technical report](https://arxiv.org/abs/2606.03748), [YOLOE documentation](https://docs.ultralytics.com/models/yoloe/), [Ultralytics 8.4.2 source at `486342c`](https://github.com/ultralytics/ultralytics/tree/486342c195c28c739a033f599bbbb720d749f3d0), [default YAML](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/cfg/models/26/yolo26.yaml), [Detect head](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/nn/modules/head.py), [loss](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/utils/loss.py), [assigner](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/utils/tal.py), [model parser](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/nn/tasks.py), [exporter](https://github.com/ultralytics/ultralytics/blob/486342c195c28c739a033f599bbbb720d749f3d0/ultralytics/engine/exporter.py) |
 | Y024 | MMYOLO | [repository](https://github.com/open-mmlab/mmyolo), [documentation](https://mmyolo.readthedocs.io/) |
 | Y025 | RKNN Model Zoo | [repository](https://github.com/airockchip/rknn_model_zoo) |
 | Y026 | YOLOv5-Lite | [repository](https://github.com/ppogg/YOLOv5-Lite) |
@@ -42,6 +42,16 @@
 | `reg_max=16`、训练 raw outputs、DFL/decode/sigmoid | 固定 revision 的 `Detect` 源码 | 该 revision 常规检测 head 的代码路径 | 某个导出文件是否包含相同步骤 |
 | TaskAlignedAssigner、BCE、box 与 DFL loss | 固定 revision 的 loss/assigner 源码 | 默认检测损失的实现事实 | 未记录配置的实际训练确实走了相同路径 |
 | COCO 指标、参数量和速度 | 在线模型文档 | 文档声明的环境与口径 | 本人数据、硬件、版本或端到端链路结果 |
+
+## Y023 事实—来源边界
+
+| 判断 | 直接来源 | 能支持 | 不能支持 |
+|---|---|---|---|
+| 默认 P3/P4/P5 拓扑、scale 与 `reg_max=1` | 固定 `yolo26.yaml` 与 parser | 该 revision 配置解析得到的结构合同 | 后续 release、其他任务或真实运行结果 |
+| one-to-many/one-to-one 双 head、detach、decode 与 top-k | 固定 `head.py` | 该 revision Detect 的 train/eval 控制流 | 任意导出 backend 都保持同一执行图 |
+| Progressive Loss 与两类 assigner | 固定 `loss.py`、`tal.py`、trainer | 权重调度、top-k 和候选筛选代码路径 | 在自有数据上的收益或收敛结果 |
+| fuse 删除辅助 head、export backend 例外 | 固定 `tasks.py` 与 exporter | 该 revision 的融合和显式限制 | 目标 runtime 已正确支持或数值一致 |
+| 技术动机、公开指标和格式支持 | 报告与在线文档 | 第一方披露的对应口径 | 本人复测、未披露配置或后续页面状态 |
 
 ## Y028 事实—来源边界
 

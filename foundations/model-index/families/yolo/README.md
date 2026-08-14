@@ -8,7 +8,7 @@ owner_review: accepted
 ip_review: not-applicable
 confidence: medium
 created: 2026-07-25
-updated: 2026-07-27
+updated: 2026-08-14
 ---
 
 # YOLO
@@ -51,6 +51,7 @@ YOLO 是实时目标检测模型家族，但不是由单一组织连续维护的
 | 页面 | 负责的问题 |
 |---|---|
 | [Architecture](architecture.md) | YOLO11 参考数据流、各模块输入输出、机制变化和失效线索 |
+| [YOLO26 architecture](yolo26-architecture.md) | 固定 YOLO26 实现的逐层结构、双 head、训练/推理路径、修改影响和学习 Oracle |
 | [Data and training](data-and-training.md) | 数据、标签分配、损失、增强和迁移训练判断 |
 | [Evaluation](evaluation.md) | 第一方代表事实、个人评测口径和任务级 Oracle |
 | [Deployment](deployment.md) | 导出、量化、runtime、后处理和板端契约 |

@@ -2,6 +2,8 @@
 
 本页以 Ultralytics YOLO11 的固定实现 `b89d6f407` 为深入理解锚点，再用其他分支解释机制变化。固定 revision 很重要：配置段名、模块实现和导出路径会随 release 改变（Y019）。
 
+YOLO26 的完整逐层结构不在本页重复维护；见 [YOLO26 architecture and modification map](yolo26-architecture.md)。本页只保留跨分支机制变化和 YOLO11 锚点。
+
 ## 1. 先看完整数据流
 
 ```text
