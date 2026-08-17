@@ -195,16 +195,16 @@ stride=1、same padding 下，连续三个 `5×5` max-pool 的有效感受范围
 
 固定 YOLO11 Attention 输入为 `B×C×H×W`，令 `N=H×W`，用 `1×1 Conv` 生成 Q/K/V，再按多头 reshape。对单个 head，可用标准形式理解：
 
-$$
+```math
 A=\operatorname{softmax}\left(\frac{Q^T K}{\sqrt{d_k}}\right),\qquad
 Y=V A^T
-$$
+```
 
 其中 `A` 的空间交互尺寸是 `N×N`。固定实现还在 value 上增加一个 depthwise `3×3 Conv` 的 positional encoding，再经过 `1×1` projection（Y019）：
 
-$$
+```math
 Y'=\operatorname{Proj}(Y+\operatorname{PE}(V))
-$$
+```
 
 必须能从这里推出部署含义：当 `H,W` 较大时，attention matrix 的成本随 `N^2=(HW)^2` 增长；因此 YOLO11 把 C2PSA 放在深层低分辨率特征上，不应仅凭“attention 有全局关系”就把它无条件前移到 P2/P3。
 
@@ -212,13 +212,13 @@ $$
 
 固定实现可以写成：
 
-$$
+```math
 x_1=x+\operatorname{Attention}(x)
-$$
+```
 
-$$
+```math
 x_2=x_1+\operatorname{FFN}(x_1)
-$$
+```
 
 FFN 是 `1×1 Conv: C→2C` 后接 `1×1 Conv: 2C→C`，第二层关闭激活。这里应能解释“Attention 负责 token/空间位置之间的信息交互，FFN 负责每个位置上的通道变换”，而 residual 让原特征可直接通过。
 
@@ -240,14 +240,14 @@ x → 1×1 Conv → split(a, b)
 
 可写成：
 
-$$
+```math
 (a,b)=\operatorname{split}(\operatorname{Conv}_{1\times1}(x)),\qquad
 b'=\operatorname{PSABlocks}(b)
-$$
+```
 
-$$
+```math
 y=\operatorname{Conv}_{1\times1}(\operatorname{Concat}(a,b'))
-$$
+```
 
 所以 C2PSA 不是“整张 feature map 全部做 attention”，而是 CSP 风格地保留一条 bypass，只在部分通道上承担 attention 成本。
 
