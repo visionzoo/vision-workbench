@@ -196,14 +196,14 @@ stride=1、same padding 下，连续三个 `5×5` max-pool 的有效感受范围
 固定 YOLO11 Attention 输入为 `B×C×H×W`，令 `N=H×W`，用 `1×1 Conv` 生成 Q/K/V，再按多头 reshape。对单个 head，可用标准形式理解：
 
 ```math
-A=\operatorname{softmax}\left(\frac{Q^T K}{\sqrt{d_k}}\right),\qquad
+A=softmax\left(\frac{Q^T K}{\sqrt{d_k}}\right),\qquad
 Y=V A^T
 ```
 
 其中 `A` 的空间交互尺寸是 `N×N`。固定实现还在 value 上增加一个 depthwise `3×3 Conv` 的 positional encoding，再经过 `1×1` projection（Y019）：
 
 ```math
-Y'=\operatorname{Proj}(Y+\operatorname{PE}(V))
+Y'=Proj(Y+PE(V))
 ```
 
 必须能从这里推出部署含义：当 `H,W` 较大时，attention matrix 的成本随 `N^2=(HW)^2` 增长；因此 YOLO11 把 C2PSA 放在深层低分辨率特征上，不应仅凭“attention 有全局关系”就把它无条件前移到 P2/P3。
@@ -213,11 +213,11 @@ Y'=\operatorname{Proj}(Y+\operatorname{PE}(V))
 固定实现可以写成：
 
 ```math
-x_1=x+\operatorname{Attention}(x)
+x_1=x+Attention(x)
 ```
 
 ```math
-x_2=x_1+\operatorname{FFN}(x_1)
+x_2=x_1+FFN(x_1)
 ```
 
 FFN 是 `1×1 Conv: C→2C` 后接 `1×1 Conv: 2C→C`，第二层关闭激活。这里应能解释“Attention 负责 token/空间位置之间的信息交互，FFN 负责每个位置上的通道变换”，而 residual 让原特征可直接通过。
@@ -241,45 +241,58 @@ x → 1×1 Conv → split(a, b)
 可写成：
 
 ```math
-(a,b)=\operatorname{split}(\operatorname{Conv}_{1\times1}(x)),\qquad
-b'=\operatorname{PSABlocks}(b)
+(a,b)=split(Conv_{1×1}(x)),\qquad
+b'=PSABlocks(b)
 ```
 
 ```math
-y=\operatorname{Conv}_{1\times1}(\operatorname{Concat}(a,b'))
+y=Conv_{1×1}(Concat(a,b'))
 ```
 
 所以 C2PSA 不是“整张 feature map 全部做 attention”，而是 CSP 风格地保留一条 bypass，只在部分通道上承担 attention 成本。
 
 ### 7.8 DFL：先区分“分布表示/解码”与“DFL loss”
 
-YOLO11 的回归不是直接输出 `l,t,r,b` 四个连续数，而是每个方向输出 `K=reg_max` 个 logits。对某个方向，softmax 后：
+固定 YOLO11 锚点中 `reg_max=16`；YOLO26 固定实现则需要单独看其 Detect 输出和训练实现，不能把 YOLO11 的 DFL 结论直接迁移过去。
+
+对一个边界距离 `y`，离散 bin 为 `0,...,K-1`。模型输出 logits `z_i`，softmax 得到：
 
 $$
 p_i=\frac{e^{z_i}}{\sum_{j=0}^{K-1}e^{z_j}}
 $$
 
-推理阶段 DFL decoder 用离散分布的期望得到连续距离：
+推理时用期望得到连续距离：
 
 $$
-\hat d=\sum_{i=0}^{K-1} i\,p_i
+\hat y=\sum_{i=0}^{K-1} i\,p_i
 $$
 
-四个方向分别得到 `l,t,r,b`，再结合 anchor point 解码成框。**DFL decoder 是模型输出表示的一部分，DFL loss 是训练监督函数**；两者相关但不能混成一个概念。训练公式见 [Data and training](data-and-training.md)。
+训练时目标 `y` 落在相邻两个 bin `l=floor(y)` 与 `r=l+1` 之间，线性权重为：
 
-YOLO11 固定锚点中 `reg_max=16`；YOLO26 固定实现则需要单独看其版本与配置，不能把 YOLO11 的 16-bin 回归习惯直接外推（Y019、Y023）。
+$$
+w_l=r-y,\qquad w_r=y-l
+$$
 
-## 8. 模块掌握自检
+DFL loss 可理解为对两个邻近分类目标做加权交叉熵：
 
-不要求默写类定义，但下面问题应能在不查二手文章的情况下回答或快速从源码推出：
+$$
+L_{DFL}=w_l\,CE(z,l)+w_r\,CE(z,r)
+$$
 
-1. 为什么 Ultralytics `Conv` 默认 `bias=False`，Conv+BN 在部署时怎么融合？
-2. C2f 的 concat 里到底有哪些 tensor，为什么不是只 concat 两条最终分支？
-3. C3k2 与 C2f 的外层拓扑差在哪里；`c3k=True/False` 实际改变哪里？
-4. 三次串行 `5×5` max-pool 为什么能对应 `5/9/13` 的有效范围？
-5. Attention 中 Q、K、V 和 `N×N` attention matrix 的 shape 如何推导？
-6. PSABlock 与 C2PSA 分别在哪一级做 residual、在哪一级做 channel split？
-7. DFL 为什么能从离散 bins 得到连续距离；它与 DFL loss 分别发生在推理和训练的哪一段？
-8. 修改其中任一模块后，参数量、FLOPs、feature-map shape、感受范围、梯度路径和目标 runtime 算子支持会分别怎么变化？
+这里必须区分两件事：**DFL 表示/积分是推理 decode 机制；DFL loss 是训练监督机制。** 两者相关，但不是同一个算子。
+
+### 7.9 最低自检
+
+至少能够不看资料回答：
+
+1. Conv 为什么通常 `bias=False` 再接 BN？Conv+BN 如何 fuse？
+2. C2f 与普通串行 Bottleneck 堆叠的 tensor 路径有什么不同？
+3. C3k2 中什么时候实际使用 C3k，什么时候使用 Bottleneck？
+4. SPPF 连续三个 `5×5` pooling 为什么可以得到约 `5/9/13` 的有效范围？
+5. Attention 为什么对 `H×W` 很敏感？为什么通常放在深层？
+6. PSABlock 中 Attention、FFN、residual 各自负责什么？
+7. C2PSA 为什么只让部分 channel 进入 PSA？
+8. DFL 为什么能从离散 bins 得到连续距离；它与 DFL loss 分别发生在推理和训练的哪一段？
+9. 修改其中任一模块后，参数量、FLOPs、feature-map shape、感受范围、梯度路径和目标 runtime 算子支持会分别怎么变化？
 
 如果只能说“C2PSA 是注意力模块”“SPPF 扩大感受野”“DFL 提高定位精度”，还没有达到本页定义的掌握线。
