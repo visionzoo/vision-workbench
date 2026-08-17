@@ -76,62 +76,124 @@
 
 缺少这些信息时，训练结果只能作为观察，不能晋级为可复用结论。
 
-## 8. 常用 Loss 最低掌握线
+## 8. Loss 基础：从 YOLO 到整个计算机视觉
 
-Loss 的最低掌握标准不是“知道名字”，而是至少能回答四件事：**预测量是什么、target 是什么、公式惩罚什么误差、梯度最终推动模型改变什么**。下面以 YOLO11 检测链为主，同时补上读其他视觉模型时最常见的基础形式。
+Loss 的最低掌握标准不是“知道名字”，而是对每一种 loss 都能回答：**预测量是什么、target 是什么、公式到底在惩罚什么、梯度会怎样改变预测、为什么适合这个任务。**
 
-### 8.1 Cross Entropy：单标签多分类的基础形式
+```mermaid
+flowchart TB
+    L[Vision Loss] --> CLS[Classification]
+    L --> REG[Regression]
+    L --> DET[Detection]
+    L --> SEG[Segmentation]
+    L --> KP[Keypoint / Pose]
+    L --> METRIC[ReID / Metric Learning]
+    CLS --> CE[Cross Entropy]
+    CLS --> BCE[BCE / BCEWithLogits]
+    CLS --> FOCAL[Focal]
+    REG --> MSE[MSE]
+    REG --> MAE[MAE]
+    REG --> SL1[Smooth L1]
+    DET --> IOU[IoU family]
+    DET --> DFL[DFL]
+    SEG --> DICE[Dice]
+    SEG --> FSEG[BCE / CE / Focal]
+    KP --> HM[Heatmap MSE]
+    KP --> WING[Wing / Adaptive Wing]
+    METRIC --> CONTRAST[Contrastive]
+    METRIC --> TRIPLET[Triplet]
+```
 
-若一个样本只属于 `C` 个类别中的一个，logits 为 `z_j`，softmax 概率：
+### 8.1 Cross Entropy：单标签多分类
+
+一个样本只属于 `C` 个类别中的一个。logits 为 `z_j`：
 
 $$
 p_j=\frac{e^{z_j}}{\sum_{k=1}^{C}e^{z_k}}
 $$
 
-真实类别为 `y` 时：
+真实类别为 `y`：
 
 $$
 L_{CE}=-\log p_y
 $$
 
-要能解释：CE 让不同类别通过 softmax 归一化后相互竞争，适合“恰好一个类别”的常规分类。**固定 YOLO11 检测分类项不是用 softmax CE，而是 BCEWithLogits**（Y019），所以不能看到“分类 loss”就默认是 CE。
+直观上，softmax 先把所有类别放到同一个概率竞争池里；target 是哪一类，就希望那一类的概率尽量接近 1。
 
-### 8.2 BCEWithLogits：独立二元目标
+因此 CE 适合“一张图片最终只有一个类别”这样的单标签分类。它与 YOLO 的分类监督不能混为一谈：固定 YOLO11 检测分类项使用 BCEWithLogits，而不是 softmax CE（Y019）。
 
-对单个 logit `z`、target `y∈[0,1]`，令 `p=σ(z)`：
+### 8.2 BCEWithLogits：每个类别独立判断
 
-$$
-L_{BCE}=-\left[y\log p+(1-y)\log(1-p)\right]
-$$
-
-`BCEWithLogitsLoss` 在数值上直接从 logits 计算，不需要先手工 sigmoid。固定 YOLO11 的分类监督对各类别 logits 使用该形式（Y019）。
-
-必须能区分：
-
-- softmax CE：类别之间总概率被归一化为 1；
-- BCE：每个类别 logit 独立建模，可接受 soft target；
-- loss 下降只说明监督目标拟合改善，不等价于最终 precision/recall 同时改善。
-
-### 8.3 Focal Loss：给困难样本更高相对权重
-
-对二分类，定义
+对单个 logit `z`、target `y`：
 
 $$
-p_t=\begin{cases}
-p,& y=1\\
-1-p,& y=0
-\end{cases}
+p=\frac{1}{1+e^{-z}}
 $$
 
-Focal Loss 可写成：
+$$
+L_{BCE}=-[y\log p+(1-y)\log(1-p)]
+$$
+
+核心区别：
+
+```text
+Softmax CE：类别之间竞争，总概率 = 1
+
+BCE：每个类别独立判断，可以同时为多个类别提供正监督
+```
+
+这适合检测 head 中“这个候选位置属于 class A 吗？”这样的独立二元判断。`BCEWithLogitsLoss` 实际实现直接从 logits 计算并采用数值稳定形式，不需要先手工 sigmoid。
+
+### 8.3 Focal Loss：为什么它能压低大量容易负样本
+
+定义：
+
+$$
+p_t=\begin{cases}p,&y=1\\1-p,&y=0\end{cases}
+$$
 
 $$
 L_{focal}=-\alpha_t(1-p_t)^\gamma\log(p_t)
 $$
 
-当容易样本已经有较高 `p_t` 时，`(1-p_t)^γ` 会压低其贡献，把优化注意力更多留给困难样本。Ultralytics 固定源码中存在这一实现，但 YOLO11 默认 `v8DetectionLoss` 仍直接使用 BCEWithLogits；因此“代码里有 FocalLoss”不等于“当前模型训练默认用了 FocalLoss”（Y019）。
+当一个样本已经很容易，例如 `p_t=0.99`，`(1-p_t)^γ` 会明显降低其贡献；困难样本相对获得更高权重。
 
-### 8.4 IoU：先理解框几何，再理解 IoU-family loss
+因此 Focal Loss 解决的是一种**优化注意力分配问题**：大量 easy negative 不应该淹没少量 hard positive/hard negative。
+
+注意：Ultralytics 固定源码存在 FocalLoss，但 YOLO11 默认检测 loss 仍使用 BCEWithLogits；“源码里有 FocalLoss”不等于“当前训练默认启用了它”（Y019）。
+
+### 8.4 MSE、MAE、Smooth L1：基础回归三件套
+
+设 prediction 为 `x`，target 为 `y`。
+
+MSE：
+
+$$
+L_{MSE}=\frac{1}{n}\sum_i(x_i-y_i)^2
+$$
+
+误差越大，惩罚按平方增长，因此对 outlier 敏感。
+
+MAE：
+
+$$
+L_{MAE}=\frac{1}{n}\sum_i|x_i-y_i|
+$$
+
+对大误差是线性惩罚，比 MSE 更鲁棒，但在 0 附近不够平滑。
+
+Smooth L1：
+
+$$
+L=\begin{cases}
+\frac{1}{2}d^2/\beta,&|d|<\beta\\
+|d|-\frac{1}{2}\beta,&|d|\ge\beta
+\end{cases}
+$$
+
+其中 `d=x-y`。可以理解为：小误差区像 L2 一样平滑，大误差区像 L1 一样不容易被 outlier 支配。
+
+### 8.5 IoU 家族：检测框为什么不直接用 MSE
 
 预测框 `B_p` 与真实框 `B_g`：
 
@@ -145,113 +207,253 @@ $$
 L_{IoU}=1-IoU
 $$
 
-它直接优化重叠关系，但当两框没有交集时，仅从普通 IoU 很难表达“应该向哪个方向靠近”。因此常见检测器进一步使用 GIoU、DIoU、CIoU 等几何项。
+它直接优化最终关心的“框重合程度”。相比直接对 `(x,y,w,h)` 使用 MSE，它更直接对应检测框几何目标。
 
-### 8.5 GIoU、DIoU、CIoU：分别补包围区域、中心距离和宽高比
+### 8.6 GIoU、DIoU、CIoU：每一步到底增加了什么
 
-令 `C` 为同时包围预测框和真实框的最小闭包矩形，则：
+GIoU：令 `C` 为包住两个框的最小闭包矩形：
 
 $$
 GIoU=IoU-\frac{|C\setminus(B_p\cup B_g)|}{|C|}
 $$
 
-DIoU 再显式加入中心距离。令 `ρ` 为两框中心点欧氏距离，`c` 为最小闭包矩形对角线长度：
+直觉：**即使没有重叠，也利用闭包区域提供惩罚。**
+
+DIoU：加入中心距离。令 `ρ` 是两个框中心距离，`c` 是闭包框对角线：
 
 $$
 DIoU=IoU-\frac{\rho^2}{c^2}
 $$
 
-CIoU 在此基础上再加入宽高比一致性：
+直觉：**不仅要重叠，两个框的中心还应该靠近。**
+
+CIoU：进一步考虑宽高比：
 
 $$
 v=\frac{4}{\pi^2}\left(\arctan\frac{w_g}{h_g}-\arctan\frac{w_p}{h_p}\right)^2
 $$
 
 $$
-\alpha=\frac{v}{1-IoU+v},\qquad
+\alpha=\frac{v}{1-IoU+v}
+$$
+
+$$
 CIoU=IoU-\frac{\rho^2}{c^2}-\alpha v
 $$
 
-对应 loss 通常写成 `1 - metric`。固定 YOLO11 `BboxLoss` 调用 `bbox_iou(..., CIoU=True)`，再以 target score 加权，因此当前锚点的 box loss 不是简单 `1-IoU`（Y019）。
+可以记成：
 
-理解这些公式时不要把“项更多”直接等同于“任何数据都更准”；它们只是改变几何误差的优化形状，最终收益仍需数据与训练验证。
+```text
+IoU   → 重叠
+GIoU  → 重叠 + 闭包区域
+DIoU  → 重叠 + 中心距离
+CIoU  → 重叠 + 中心距离 + 宽高比
+```
 
-### 8.6 DFL：把连续距离监督成两个相邻离散 bin
+固定 YOLO11 `BboxLoss` 使用 CIoU 型 box loss，并结合 target score 加权（Y019）。不要把“公式更复杂”直接理解成“必然更好”；它改变的是优化几何，最终效果必须实验验证。
 
-对某一个 `l/t/r/b` 距离 target `y`，设：
+### 8.7 DFL：为什么检测框回归要预测“分布”
+
+传统回归可以直接预测一个连续距离：
+
+```text
+anchor point → 3.72 pixels
+```
+
+DFL 则变成：
+
+```text
+0  1  2  3  4  5 ...
+         ↑  ↑
+        0.28 0.72
+```
+
+也就是让网络预测离散 bins 的概率分布，再通过期望恢复连续值。
+
+模型输出 `K` 个 logits `z_i`：
+
+$$
+p_i=\frac{e^{z_i}}{\sum_{j=0}^{K-1}e^{z_j}}
+$$
+
+target 为 `y` 时：
 
 $$
 l=\lfloor y\rfloor,\qquad r=l+1
 $$
 
-相邻两个 bin 的线性权重：
-
 $$
 w_l=r-y,\qquad w_r=y-l
 $$
 
-预测对 `K` 个 bins 给出 logits，DFL 使用两个相邻类别的加权交叉熵：
+训练：
 
 $$
-L_{DFL}=w_l\,CE(z,l)+w_r\,CE(z,r)
+L_{DFL}=w_lCE(z,l)+w_rCE(z,r)
 $$
 
-这相当于不强迫连续 target 只能落到一个整数 bin，而是让监督质量在线性插值后分配到左右两个 bin。推理时再用 softmax 后分布期望恢复连续距离：
+推理：
 
 $$
-\hat d=\sum_{i=0}^{K-1} i\,p_i
+\hat d=\sum_{i=0}^{K-1}i p_i
 $$
 
-因此 DFL 必须同时从“训练监督”和“推理解码表示”两侧理解。固定 YOLO11 `reg_max=16`；`DFLoss` 对四个方向分别产生离散距离监督，并与 CIoU box loss 同时优化（Y019）。
+因此 DFL 的核心思想是：**不要强迫一个连续边界距离硬塞进单个整数 bin，而是让相邻 bins 共同表达它。**
 
-### 8.7 YOLO11 检测总损失：三条监督不要混成一个数字
+固定 YOLO11 使用 `reg_max=16`，四个边界方向都采用离散距离表示；YOLO26 等其他分支不能直接套用这一结论，必须重新检查其 Detect 和 loss 实现。
 
-固定实现的核心可抽象为：
+### 8.8 YOLO11 的检测 Loss：三条监督链
 
-$$
-L=\lambda_{box}L_{CIoU}+\lambda_{cls}L_{BCE}+\lambda_{dfl}L_{DFL}
-$$
-
-其中 `λ` 来自具体训练配置/hyperparameters，而不是 YOLO 家族永久不变的数学常数。三个组件的作用不同：
-
-| 组件 | 直接改变的预测 | 主要错误信号 | 单独下降不能证明 |
-|---|---|---|---|
-| BCE | 类别 logits | 候选对类别目标的匹配 | 框定位正确、最终召回必然提高 |
-| CIoU | 解码后的 box geometry | 重叠、中心、宽高比 | 分类分数正确、DFL 分布正常 |
-| DFL | `l/t/r/b` 离散 logits | 距离分布与连续 target 的匹配 | decode、stride、anchor point 实现正确 |
-
-尤其在量化/部署对齐时，最终框偏差可能来自 raw distribution、DFL expectation、anchor point、stride 或后续 decode；只看 `box loss` 无法定位这些推理链问题。
-
-### 8.8 标签分配与 Loss 是两个不同问题
-
-固定 YOLO11 的 TaskAlignedAssigner 使用分类分数和 IoU 共同形成 alignment metric，可概括为：
-
-$$
-m=s^{\alpha}\,u^{\beta}
-$$
-
-其中 `s` 是对应类别分数、`u` 是 overlap/IoU，固定源码锚点使用 `α=0.5, β=6.0`（Y019）。assigner 决定“哪些候选进入监督以及 target score 是什么”，loss 决定“对这些候选如何产生梯度”。
-
-因此：
-
-```text
-assigner 错/不合适
-→ 正样本集合和 target 已经偏了
-→ 即使 BCE / CIoU / DFL 实现完全正确，也可能训练出错误行为
+```mermaid
+flowchart LR
+    R[Raw P3/P4/P5] --> C[Class logits]
+    R --> B[Box geometry]
+    R --> D[4 × distance distributions]
+    C --> LC[BCE]
+    B --> LB[CIoU-style box loss]
+    D --> LD[DFL]
+    LC --> SUM[Weighted total loss]
+    LB --> SUM
+    LD --> SUM
 ```
 
-这也是为什么修改 loss 前，要先核查正样本数量、目标尺度、标签质量和 assigner 输出。
+可以抽象成：
 
-## 9. Loss 掌握自检
+$$
+L=\lambda_{box}L_{box}+\lambda_{cls}L_{cls}+\lambda_{dfl}L_{dfl}
+$$
 
-至少应能在纸上或白板上完成以下解释：
+其中 `λ` 来自具体训练配置，而不是整个 YOLO 家族永远固定的常数。
 
-1. 写出 softmax CE 与 sigmoid BCE 的基本公式，并说明 YOLO11 默认分类项为什么属于后者。
-2. 写出 Focal Loss 的 `(1-p_t)^γ`，解释它到底在压谁、为什么不能看到类不平衡就机械替换 BCE。
-3. 从交并面积写出 IoU，并说明 GIoU、DIoU、CIoU 分别额外加入了什么几何约束。
-4. 手写 DFL 对相邻两个 bins 的线性插值权重，并从 logits 推导到连续距离期望。
-5. 解释 `box/cls/dfl` 三个 loss 哪一个下降时，哪些最终检测问题仍然完全可能存在。
-6. 区分 label assignment 与 loss：一个决定监督对象，一个决定对监督对象如何优化。
-7. 当修改 loss 后 mAP 上升时，仍要检查哪些分层指标，才能避免总指标掩盖小目标、难例或特定类别退化。
+三条链分别回答不同问题：
 
-如果只能记住“Focal 解决类别不平衡”“CIoU 比 IoU 好”“DFL 提升定位”，还没有达到本页定义的掌握线。
+| Loss | 它看什么 | 它希望模型改变什么 |
+|---|---|---|
+| BCE | 这个候选像不像目标类别 | 改变 class logits |
+| Box / CIoU | 预测框几何上离 GT 多远 | 改变中心、尺寸和重叠关系 |
+| DFL | 四条边的距离分布是否合理 | 改变每个 distance bin 的概率 |
+
+总 loss 下降并不意味着每一项都同样改善，更不能直接推出小目标 AP、Recall 或板端精度一定提高。
+
+### 8.9 分割 Loss：为什么 Dice 经常和 BCE/CE 一起出现
+
+二分类 mask 可以用 BCE：每个 pixel 独立判断 foreground/background。
+
+但如果前景只占很少像素，大量 background 会让 BCE 被 easy negative 主导。这时 Dice 很有价值：
+
+$$
+Dice=\frac{2|P\cap G|}{|P|+|G|}
+$$
+
+$$
+L_{Dice}=1-Dice
+$$
+
+它直接关注整体区域重叠。因此常见组合是：
+
+```text
+Segmentation Loss
+├── BCE / CE：pixel-level classification
+└── Dice：region-level overlap
+```
+
+这与小目标分割很相关：如果前景很小，只看 pixel accuracy 很容易得到一个虚假的高分。
+
+### 8.10 Keypoint Loss：Heatmap 与回归不是一回事
+
+Heatmap keypoint：
+
+```text
+image → backbone → feature map → keypoint heatmap
+                              ↓
+                     Gaussian target heatmap
+                              ↓
+                         MSE / focal-like
+```
+
+MSE：
+
+$$
+L=\frac{1}{N}\sum_i(\hat H_i-H_i)^2
+$$
+
+它优化的是**整张关键点热图**，不是直接优化 `(x,y)` 坐标。
+
+Regression keypoint：
+
+```text
+feature → (x1,y1,x2,y2,...) → L1 / Smooth L1 / Wing
+```
+
+Wing Loss 的目标是让小误差区域更敏感，同时避免大误差对训练造成过度影响；它常用于人脸/关键点回归，但具体公式和实现应以采用的论文/代码为准，不能仅凭名称假设完全一致。
+
+### 8.11 ReID / Metric Learning：目标不是分类，而是距离空间
+
+ReID 的目标通常不是“这个人属于 class 17”，而是：
+
+```text
+同一个人 → embedding 更近
+不同的人 → embedding 更远
+```
+
+Triplet Loss：
+
+$$
+L=\max(0,d(a,p)-d(a,n)+m)
+$$
+
+其中 `a` 是 anchor，`p` 是同身份 positive，`n` 是不同身份 negative，`m` 是 margin。
+
+Contrastive Loss 的核心也是拉近正样本、推远负样本，但具体形式有多种实现。
+
+### 8.12 Loss 的统一理解框架
+
+以后看到任何新 Loss，不要先背名字，先问：
+
+```text
+Prediction
+    ↓
+它预测什么？
+    ↓
+Target
+    ↓
+真实世界希望它变成什么？
+    ↓
+Error geometry
+    ↓
+这个 loss 如何定义“错得多”？
+    ↓
+Gradient
+    ↓
+梯度最终推动哪个预测改变？
+    ↓
+Task fit
+    ↓
+为什么这个误差定义适合当前任务？
+```
+
+例如：
+
+```text
+分类 → 类别概率错多少？
+检测框 → 几何重叠/距离错多少？
+DFL → 边界距离分布错多少？
+分割 → pixel + region 错多少？
+关键点 → 坐标/热图峰值错多少？
+ReID → embedding 距离关系错多少？
+```
+
+## 9. 最低自检：必须能脱稿解释
+
+1. CE 与 BCE 的根本区别是什么？为什么 YOLO 检测分类通常用 BCE 类监督？
+2. Focal Loss 的 `(1-p_t)^γ` 为什么能降低 easy negative 的相对权重？
+3. MSE、MAE、Smooth L1 对 outlier 的反应有什么区别？
+4. IoU、GIoU、DIoU、CIoU 分别补充了什么几何信息？
+5. DFL 为什么要把连续距离表示成离散分布？训练和推理分别发生什么？
+6. YOLO11 的 box、cls、DFL 三条监督链分别优化什么？
+7. 为什么小目标/小前景分割常需要关注 Dice，而不能只看 pixel accuracy？
+8. Heatmap keypoint 与直接 `(x,y)` regression 的 loss 在“预测量”上有什么根本区别？
+9. Triplet Loss 的 anchor/positive/negative 分别是什么？
+10. 看到任何新 Loss，能否说清 prediction、target、误差定义、梯度方向和任务适配性？
+
+如果只能回答“这个 loss 提高精度”“DFL 用于检测框”，仍然没有达到本页定义的掌握线。
