@@ -84,15 +84,15 @@ Loss 的最低掌握标准不是“知道名字”，而是至少能回答四件
 
 若一个样本只属于 `C` 个类别中的一个，logits 为 `z_j`，softmax 概率：
 
-\[
+$$
 p_j=\frac{e^{z_j}}{\sum_{k=1}^{C}e^{z_k}}
-\]
+$$
 
 真实类别为 `y` 时：
 
-\[
+$$
 L_{CE}=-\log p_y
-\]
+$$
 
 要能解释：CE 让不同类别通过 softmax 归一化后相互竞争，适合“恰好一个类别”的常规分类。**固定 YOLO11 检测分类项不是用 softmax CE，而是 BCEWithLogits**（Y019），所以不能看到“分类 loss”就默认是 CE。
 
@@ -100,9 +100,9 @@ L_{CE}=-\log p_y
 
 对单个 logit `z`、target `y∈[0,1]`，令 `p=σ(z)`：
 
-\[
+$$
 L_{BCE}=-\left[y\log p+(1-y)\log(1-p)\right]
-\]
+$$
 
 `BCEWithLogitsLoss` 在数值上直接从 logits 计算，不需要先手工 sigmoid。固定 YOLO11 的分类监督对各类别 logits 使用该形式（Y019）。
 
@@ -116,16 +116,18 @@ L_{BCE}=-\left[y\log p+(1-y)\log(1-p)\right]
 
 对二分类，定义
 
-\[
+$$
 p_t=\begin{cases}
-p,& y=1\\1-p,& y=0\end{cases}
-\]
+p,& y=1\\
+1-p,& y=0
+\end{cases}
+$$
 
 Focal Loss 可写成：
 
-\[
+$$
 L_{focal}=-\alpha_t(1-p_t)^\gamma\log(p_t)
-\]
+$$
 
 当容易样本已经有较高 `p_t` 时，`(1-p_t)^γ` 会压低其贡献，把优化注意力更多留给困难样本。Ultralytics 固定源码中存在这一实现，但 YOLO11 默认 `v8DetectionLoss` 仍直接使用 BCEWithLogits；因此“代码里有 FocalLoss”不等于“当前模型训练默认用了 FocalLoss”（Y019）。
 
@@ -133,15 +135,15 @@ L_{focal}=-\alpha_t(1-p_t)^\gamma\log(p_t)
 
 预测框 `B_p` 与真实框 `B_g`：
 
-\[
+$$
 IoU=\frac{|B_p\cap B_g|}{|B_p\cup B_g|}
-\]
+$$
 
 最直接的 IoU loss：
 
-\[
+$$
 L_{IoU}=1-IoU
-\]
+$$
 
 它直接优化重叠关系，但当两框没有交集时，仅从普通 IoU 很难表达“应该向哪个方向靠近”。因此常见检测器进一步使用 GIoU、DIoU、CIoU 等几何项。
 
@@ -149,26 +151,26 @@ L_{IoU}=1-IoU
 
 令 `C` 为同时包围预测框和真实框的最小闭包矩形，则：
 
-\[
+$$
 GIoU=IoU-\frac{|C\setminus(B_p\cup B_g)|}{|C|}
-\]
+$$
 
 DIoU 再显式加入中心距离。令 `ρ` 为两框中心点欧氏距离，`c` 为最小闭包矩形对角线长度：
 
-\[
+$$
 DIoU=IoU-\frac{\rho^2}{c^2}
-\]
+$$
 
 CIoU 在此基础上再加入宽高比一致性：
 
-\[
+$$
 v=\frac{4}{\pi^2}\left(\arctan\frac{w_g}{h_g}-\arctan\frac{w_p}{h_p}\right)^2
-\]
+$$
 
-\[
+$$
 \alpha=\frac{v}{1-IoU+v},\qquad
 CIoU=IoU-\frac{\rho^2}{c^2}-\alpha v
-\]
+$$
 
 对应 loss 通常写成 `1 - metric`。固定 YOLO11 `BboxLoss` 调用 `bbox_iou(..., CIoU=True)`，再以 target score 加权，因此当前锚点的 box loss 不是简单 `1-IoU`（Y019）。
 
@@ -178,27 +180,27 @@ CIoU=IoU-\frac{\rho^2}{c^2}-\alpha v
 
 对某一个 `l/t/r/b` 距离 target `y`，设：
 
-\[
+$$
 l=\lfloor y\rfloor,\qquad r=l+1
-\]
+$$
 
 相邻两个 bin 的线性权重：
 
-\[
+$$
 w_l=r-y,\qquad w_r=y-l
-\]
+$$
 
 预测对 `K` 个 bins 给出 logits，DFL 使用两个相邻类别的加权交叉熵：
 
-\[
+$$
 L_{DFL}=w_l\,CE(z,l)+w_r\,CE(z,r)
-\]
+$$
 
 这相当于不强迫连续 target 只能落到一个整数 bin，而是让监督质量在线性插值后分配到左右两个 bin。推理时再用 softmax 后分布期望恢复连续距离：
 
-\[
+$$
 \hat d=\sum_{i=0}^{K-1} i\,p_i
-\]
+$$
 
 因此 DFL 必须同时从“训练监督”和“推理解码表示”两侧理解。固定 YOLO11 `reg_max=16`；`DFLoss` 对四个方向分别产生离散距离监督，并与 CIoU box loss 同时优化（Y019）。
 
@@ -206,9 +208,9 @@ L_{DFL}=w_l\,CE(z,l)+w_r\,CE(z,r)
 
 固定实现的核心可抽象为：
 
-\[
+$$
 L=\lambda_{box}L_{CIoU}+\lambda_{cls}L_{BCE}+\lambda_{dfl}L_{DFL}
-\]
+$$
 
 其中 `λ` 来自具体训练配置/hyperparameters，而不是 YOLO 家族永久不变的数学常数。三个组件的作用不同：
 
@@ -224,9 +226,9 @@ L=\lambda_{box}L_{CIoU}+\lambda_{cls}L_{BCE}+\lambda_{dfl}L_{DFL}
 
 固定 YOLO11 的 TaskAlignedAssigner 使用分类分数和 IoU 共同形成 alignment metric，可概括为：
 
-\[
+$$
 m=s^{\alpha}\,u^{\beta}
-\]
+$$
 
 其中 `s` 是对应类别分数、`u` 是 overlap/IoU，固定源码锚点使用 `α=0.5, β=6.0`（Y019）。assigner 决定“哪些候选进入监督以及 target score 是什么”，loss 决定“对这些候选如何产生梯度”。
 
