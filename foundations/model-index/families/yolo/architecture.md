@@ -105,194 +105,681 @@ YOLO11 默认不是仅靠一个 `objectness` 数值解释全部置信度。导�
 
 ## 7. 基础模块最低掌握线
 
-下面不是要求背源码，而是规定一个“读到模块名后至少能还原到什么程度”的能力基线。目标是看到 YAML、`nn.Module` 或导出图时，能够从 tensor 流、公式和作用三个层次解释，而不是只记模块名称。
+这一节采用统一的六层解释法：**现实问题 → 图形化结构 → tensor 流 → 数学公式 → 为什么这样设计 → YOLO/部署影响**。模型结构优先使用 Mermaid 图；如果结构复杂到 Mermaid 会降低可读性，应继续用表格、ASCII 图或单独 SVG，而不是为了“有图”牺牲逻辑清晰度。
 
-### 7.1 `Conv2d(bias=False) → BatchNorm2d → SiLU`
+### 7.1 Conv → BatchNorm → Activation
 
-固定 YOLO11 `Conv` 的默认路径就是 `Conv2d(bias=False) → BatchNorm2d → SiLU`（Y019）。至少应能写出三步：
+固定 YOLO11 `Conv` 的默认路径是 `Conv2d(bias=False) → BatchNorm2d → SiLU`（Y019）。先把它看成三件事：
 
-卷积：
+```mermaid
+flowchart LR
+    X[输入特征图\nB×Cin×H×W] --> C[Conv2d\n局部空间混合 + channel 映射]
+    C --> BN[BatchNorm2d\n重新缩放/平移每个 channel]
+    BN --> A[Activation\n加入非线性]
+    A --> Y[输出特征图\nB×Cout×H'×W']
+```
+
+#### 7.1.1 Conv 到底做了什么
+
+对一个输出 channel：
 
 $$
-z_{o,i,j}=\sum_{c}\sum_{u,v}W_{o,c,u,v}\,x_{c,i+u,j+v}
+z_{o,i,j}=\sum_c\sum_{u,v}W_{o,c,u,v}x_{c,i+u,j+v}+b_o$$
+
+直观上，`3×3` Conv 在每个位置拿一个局部窗口，把窗口中的像素/特征按权重相加。多个输出 channel 就相当于同时学习多种局部模式，例如边缘、纹理、角点、局部形状。
+
+stride=2 时，窗口不是每个像素都计算，而是隔一个位置取一次，因此空间尺寸下降。对于小目标，这意味着目标的有效像素会越来越少，所以“增加网络深度”不能自动弥补早期下采样造成的信息损失。
+
+#### 7.1.2 BatchNorm：γ、β从哪里来
+
+训练时，对一个 channel 的 mini-batch 激活计算：
+
+$$
+\mu_B=\frac{1}{m}\sum_{k=1}^{m}x_k,\qquad
+\sigma_B^2=\frac{1}{m}\sum_{k=1}^{m}(x_k-\mu_B)^2
 $$
 
-BatchNorm 在训练时对一个 channel 使用 mini-batch 统计量：
+标准化：
 
 $$
-\hat z=\frac{z-\mu_B}{\sqrt{\sigma_B^2+\epsilon}},\qquad
-\mathrm{BN}(z)=\gamma\hat z+\beta
+\hat{x}=\frac{x-\mu_B}{\sqrt{\sigma_B^2+\epsilon}}
 $$
+
+再由两个**可学习参数**恢复可调尺度和偏移：
+
+$$
+y=\gamma\hat{x}+\beta
+$$
+
+关键点：
+
+- `γ` 和 `β` 不是根据当前输入手工计算的；它们属于模型参数。
+- 常见初始化是 `γ=1`、`β=0`，使 BN 初始时近似只做标准化。
+- 训练时通过反向传播和 optimizer（SGD/Adam 等）更新 `γ, β`。
+- `running_mean`、`running_var` 是另一组统计状态；它们不是 γ、β。
+- 推理时通常不再使用当前 batch 的统计量，而使用训练阶段累计的 running statistics。
+
+因此可以把 BN 理解成：
+
+```text
+原始激活
+   ↓
+“先把尺度/偏移拉回一个稳定范围”
+   ↓
+标准化 x_hat
+   ↓
+“但网络仍然需要自由选择最终尺度和偏移”
+   ↓
+γ × x_hat + β
+   ↓
+输出
+```
+
+如果去掉 γ、β，BN 就强制每个 channel 的输出保持固定标准化形式，表达能力会受到限制。γ、β让网络可以学习“保留多少标准化效果”。
+
+#### 7.1.3 推理阶段为什么 BN 可以消失
+
+如果卷积 bias 为 0，推理阶段 BN 可以折叠进 Conv：
+
+$$
+W'=\frac{\gamma}{\sqrt{\sigma^2+\epsilon}}W
+$$
+
+$$
+b'=\beta-\frac{\gamma\mu}{\sqrt{\sigma^2+\epsilon}}
+$$
+
+因此：
+
+```text
+训练图：Conv → BN
+
+推理图：Conv'
+
+两者可以在固定 running statistics 下数学等价
+```
+
+这也是为什么部署优化经常把 `Conv+BN` 融合成一个卷积。
+
+#### 7.1.4 SiLU 以及常见激活函数
 
 SiLU：
 
 $$
-\mathrm{SiLU}(x)=x\,\sigma(x)=\frac{x}{1+e^{-x}}
+SiLU(x)=x\sigma(x)=\frac{x}{1+e^{-x}}
 $$
 
-结构作用必须能解释到：卷积负责局部线性特征提取/下采样/通道映射；BN 改变训练期激活的尺度与偏移并维护推理期 running statistics；SiLU 提供平滑非线性。`bias=False` 与后接 BN 有关：BN 本身已有可学习偏移，训练图没有必要再保留卷积 bias。
+它在负区间不是简单截断，而是平滑地衰减；在现代 CNN/YOLO 中很常见。
 
-部署时还应知道 Conv+BN 可以折叠。若卷积原 bias 为 0，则对输出 channel：
+常见激活函数至少应能认出下面这些：
+
+| 激活 | 公式 | 常见使用位置 | 特殊点 |
+|---|---|---|---|
+| ReLU | `max(0,x)` | 经典 CNN、轻量 CNN | 简单、快；负值梯度为 0 |
+| LeakyReLU | `max(x, αx)` | 检测/生成网络、部分旧架构 | 负半轴保留固定斜率 |
+| PReLU | `max(x, αx)` | 一些 CNN | α 是可学习参数 |
+| ELU | `x` if `x>0`, else `α(e^x-1)` | 部分 CNN | 负值平滑 |
+| GELU | `xΦ(x)` | Transformer、ViT、MLP | 概率式平滑门控，现代 Transformer 常见 |
+| SiLU/Swish | `xσ(x)` | YOLO 等现代 CNN | 平滑、非单纯截断 |
+| Mish | `x tanh(softplus(x))` | 部分检测网络 | 平滑但计算相对复杂 |
+| Softplus | `log(1+e^x)` | 少数需要平滑正值映射的模块 | ReLU 的平滑版本 |
+| Sigmoid | `1/(1+e^-x)` | 二分类、多标签、YOLO 类别输出 | 输出 0–1；不是中间层首选激活 |
+| Softmax | `exp(x_i)/Σ_j exp(x_j)` | 多分类、Attention、DFL | 在类别/bin 维度归一化成概率分布 |
+
+特别要记住“同一个函数在不同位置承担不同任务”：
+
+```text
+CNN 中间层       Conv → BN → SiLU
+YOLO 分类输出    logits → Sigmoid
+Attention 权重   QK^T → Softmax
+DFL 分布         bin logits → Softmax
+```
+
+不能因为它们都叫“activation”就认为作用相同。Sigmoid/Softmax 常常承担概率或权重归一化，而 SiLU/ReLU/GELU 更多承担中间特征的非线性变换。
+
+### 7.2 C2f：为什么要“分流，再逐级变换，再全部拼起来”
+
+C2f 最容易被误解成“多个 Bottleneck 串起来”。真正的结构是：**部分特征直接保留，另一部分逐级变换，而且每一级中间结果都进入最终 concat。**
+
+```mermaid
+flowchart LR
+    X[输入 x\nB×C×H×W] --> P[1×1 Conv\n通道映射]
+    P --> S{Split / Chunk}
+    S --> A[保留分支 a]
+    S --> B[变换分支 b]
+    B --> M1[Bottleneck 1]
+    M1 --> Y1[y1]
+    Y1 --> M2[Bottleneck 2]
+    M2 --> Y2[y2]
+    Y2 --> Mn[Bottleneck n]
+    Mn --> Yn[yn]
+    A --> Cat[Concat\na + b + y1 + y2 + ... + yn]
+    B --> Cat
+    Y1 --> Cat
+    Y2 --> Cat
+    Yn --> Cat
+    Cat --> O[1×1 Conv\n输出投影]
+```
+
+用具体数字理解更直观。假设输入 `80×80×128`，隐藏通道 `c=64`，内部有 `n=2` 个 block：
+
+```text
+80×80×128
+      ↓ 1×1 Conv
+80×80×128
+      ↓ split
+ ┌──────────────┬──────────────┐
+ │ a: 64 ch     │ b: 64 ch     │
+ │ 直接保留      │ 进入变换      │
+ └──────────────┴──────┬───────┘
+                       ↓
+                 Bottleneck
+                       ↓ y1: 64 ch
+                 Bottleneck
+                       ↓ y2: 64 ch
+
+最终：a + b + y1 + y2
+      64 + 64 + 64 + 64
+      = 256 channels
+             ↓
+          1×1 Conv
+             ↓
+        80×80×128
+```
+
+所以 C2f 的核心不是“多做几次卷积”，而是**保留更多中间表示并建立多条梯度路径**。普通串行结构更像：
+
+```text
+x → B1 → B2 → B3 → output
+```
+
+C2f 更像：
+
+```text
+x → split ────────────────┐
+      └→ B1 → y1 ────────┤
+             └→ B2 → y2 ─┤→ concat → output
+```
+
+这也是读源码时应该关注 `chunk/split`、`ModuleList`、`cat` 的原因。
+
+### 7.3 C3k2：C2f 外壳 + 可替换内部 block
+
+```mermaid
+flowchart TB
+    X[C3k2 input] --> C[Outer C2f]
+    C --> S[Split]
+    S --> A[Bypass branch]
+    S --> B[Repeated m blocks]
+    B --> Q{c3k?}
+    Q -->|false| BN[Bottleneck]
+    Q -->|true| C3[C3k\nC3-style two-branch block]
+    BN --> CAT[Concat all retained/intermediate features]
+    C3 --> CAT
+    A --> CAT
+    CAT --> OUT[Projection → output]
+```
+
+固定 YOLO11 实现中，`C3k2` 继承 `C2f`，所以先理解 C2f 再理解 C3k2。`c3k=False` 时内部通常走 Bottleneck；`c3k=True` 时可进入 C3k。具体 kernel、shortcut、`n`、width/depth scaling 必须以固定 revision 和 YAML 实参为准。
+
+因此不能从“C3k2”这个名字直接推断计算量。真正决定计算的是：输入输出 channel、隐藏 channel、block 数、kernel、shortcut、是否 C3k、模型 scale。
+
+### 7.4 SPPF：为什么连续三个 5×5 pooling 可以看到不同范围
+
+```mermaid
+flowchart LR
+    X[Feature map\nB×C×H×W] --> C[1×1 Conv\nreduce / mix channels]
+    C --> P0[原始 x0]
+    C --> P1[5×5 MaxPool\nx1]
+    P1 --> P2[5×5 MaxPool\nx2]
+    P2 --> P3[5×5 MaxPool\nx3]
+    P0 --> CAT[Concat]
+    P1 --> CAT
+    P2 --> CAT
+    P3 --> CAT
+    CAT --> O[1×1 Conv\noutput]
+```
+
+对于 stride=1、same padding：
+
+```text
+x0：当前点本身的局部表示
+x1：约 5×5 范围的信息
+x2：约 9×9 范围的信息
+x3：约 13×13 范围的信息
+```
+
+原因可以从一维长度直观看：连续两个 `5` 的有效范围是 `5+4=9`，再来一次是 `9+4=13`。二维情况同理。
+
+因此 SPPF 做的是**在不降低当前 feature map 空间分辨率的前提下，引入更大上下文**。它不能把已经在 P2/P3 下采样阶段丢失的小目标细节“变回来”。
+
+### 7.5 Attention：视觉中的“当前位置应该看谁”
+
+先不要从公式开始。把 feature map 想象成一张低分辨率语义图：
+
+```text
+Feature map B×C×H×W
+
+┌────┬────┬────┬────┐
+│ p1 │ p2 │ p3 │ p4 │
+├────┼────┼────┼────┤
+│ p5 │ p6 │ p7 │ p8 │   每个位置都有一个 C 维特征
+├────┼────┼────┼────┤
+│... │... │... │... │
+└────┴────┴────┴────┘
+```
+
+卷积天然偏向局部邻域：一个位置主要从附近的 kernel window 获得信息。Attention 改成动态询问：
+
+> “当前位置 i，需要从其他哪些位置 j 获取信息？”
+
+视觉上可以想成：
+
+```text
+        眼睛区域
+           ↓
+     ┌─────────────┐
+     │ 另一只眼睛  │ ← 可能有帮助
+     │ 鼻梁        │ ← 可能有帮助
+     │ 眼眶边缘    │ ← 可能有帮助
+     │ 背景区域    │ ← 可能没有帮助
+     └─────────────┘
+```
+
+这就是 long-range dependency：远处位置也可以直接参与当前位置的表示更新。
+
+#### 7.5.1 从 feature map 到 token
+
+令 `N=H×W`。把二维位置摊平：
+
+```text
+B×C×H×W
+      ↓ flatten spatial dimensions
+B×C×N
+      ↓
+每一个空间位置 = 一个 token
+      ↓
+Q、K、V
+```
+
+对一个 head，若 token 维度为 `d`，可以把每个位置想成三种描述：
+
+- Q：我现在想找什么信息？
+- K：我这里有什么信息可被匹配？
+- V：如果你关注我，我真正提供什么内容？
+
+相关性来自 Q 与 K 的内积：
 
 $$
-W' = \frac{\gamma}{\sqrt{\sigma^2+\epsilon}}W,\qquad
-b' = \beta-\frac{\gamma\mu}{\sqrt{\sigma^2+\epsilon}}
+s_{ij}=\frac{q_i^T k_j}{\sqrt{d}}
 $$
 
-因此“训练图有 BN、推理图没有 BN”不一定是结构错误；先检查是否已经完成等价融合。
+它回答的是：**位置 i 对位置 j 有多感兴趣？**
 
-### 7.2 C2f：分流、逐级变换、全部拼接
+再在 j 这个维度做 softmax：
 
-固定实现可压缩为：
+$$
+a_{ij}=\frac{e^{s_{ij}}}{\sum_j e^{s_{ij}}}
+$$
 
-```text
-x
-→ 1×1 Conv → [a, b]                 # channel chunk
-                 │
-                 └→ m1 → y1 → m2 → y2 → ... → yn
-
-[a, b, y1, y2, ..., yn]
-→ concat(channel)
-→ 1×1 Conv
-→ out
-```
-
-若隐藏通道为 `c`、内部 block 数为 `n`，第一次 `1×1 Conv` 输出 `2c`，最终 concat 是 `(2+n)c` 个 channel，再由 `cv2` 投影到目标输出通道。它的核心不是“堆 n 个 Bottleneck”，而是保留初始分支和每一级中间结果共同参与最终融合。
-
-必须能区分 C2f 与普通串行堆叠：串行网络主要传递最后一级输出；C2f 显式保留多条短路径，改变特征复用和梯度传播结构。
-
-### 7.3 C3k2：C2f 外壳 + 可替换的内部变换单元
-
-YOLO11 固定实现中 `C3k2` 继承 `C2f`，因此外层仍是上一节的 split/chain/concat。差异集中在 `m`：
+于是每个位置 i 得到一组权重：
 
 ```text
-C3k2
-├─ outer topology: C2f
-└─ each m[i]
-   ├─ c3k=False → Bottleneck
-   └─ c3k=True  → C3k(..., n=2)
+              被关注的位置 j
+          p1   p2   p3   p4 ...
+位置 i    0.1  0.1  0.6  0.2 ...
+                 ↑
+             最关注 p3
 ```
 
-而 `C3k` 本身继承 C3：两条支路，一条经过若干 Bottleneck，另一条较短，最后 concat 后投影。这里最重要的能力是**不能只凭 `C3k2` 这个类名推断内部计算**；必须继续看 `c3k`、`n`、shortcut、kernel、宽深度缩放和模型 YAML 的实参。
+最后用这些权重对 V 加权求和：
 
-### 7.4 SPPF：连续 `5×5` max-pool 近似多尺度池化
+$$
+y_i=\sum_j a_{ij}v_j
+$$
 
-固定实现的主路径是：
+这句话是视觉 Attention 最值得真正理解的一句：
+
+> **一个位置的新特征，是所有位置特征的加权组合；权重由当前内容动态决定。**
+
+#### 7.5.2 为什么是 Q/K/V 三个东西
+
+如果只有一个向量，很难同时表达“我要找什么”和“我能提供什么”。Q/K/V 把匹配和信息传递拆开：
 
 ```text
-x0 = Conv1x1(x)
-x1 = MaxPool5x5(x0)
-x2 = MaxPool5x5(x1)
-x3 = MaxPool5x5(x2)
-out = Conv1x1(concat[x0, x1, x2, x3])
+当前位置 i
+   │
+   └─ Q_i：我要找什么？ ──────┐
+                              │ compare
+其他位置 j                    ↓
+   └─ K_j：我是什么？ ───────→ score(i,j)
+                              │
+                              ↓ softmax
+                         attention weight
+                              │
+其他位置 j                    ↓
+   └─ V_j：我真正提供什么？ → weighted sum
 ```
 
-stride=1、same padding 下，连续三个 `5×5` max-pool 的有效感受范围对应约 `5×5`、`9×9`、`13×13`，因此源码把它描述为与并行 `SPP(k=(5,9,13))` 等价的快速实现（Y019）。
+固定 YOLO11 Attention 使用 `1×1 Conv` 生成 Q/K/V，并做 multi-head reshape；同时在 value 路径加入 depthwise `3×3` positional encoding，再经过 projection（Y019）。
 
-必须能说明：SPPF 聚合的是**同一空间分辨率上的更大范围上下文**；它不增加输出空间分辨率，也不能恢复下采样前已经丢失的小目标细节。
+#### 7.5.3 为什么 Attention 通常放深层
 
-### 7.5 Attention：先把 `H×W` 看成 token，再做 Q/K/V 交互
+Attention 的核心交互矩阵尺寸与 `N=H×W` 有关，成本大致随 `N²` 增长：
 
-固定 YOLO11 Attention 输入为 `B×C×H×W`，令 `N=H×W`，用 `1×1 Conv` 生成 Q/K/V，再按多头 reshape。对单个 head，可用标准形式理解：
-
-```math
-A=softmax\left(\frac{Q^T K}{\sqrt{d_k}}\right),\qquad
-Y=V A^T
+```text
+P2: H、W 大 → N 大 → N² 极大
+P3: 仍然较大
+P4: 明显降低
+P5: 最低
 ```
 
-其中 `A` 的空间交互尺寸是 `N×N`。固定实现还在 value 上增加一个 depthwise `3×3 Conv` 的 positional encoding，再经过 `1×1` projection（Y019）：
+所以把 Attention 放到低分辨率深层 feature map，是一个典型的计算/全局建模折中。它不是“Attention 只能放深层”，而是**深层语义更成熟、token 更少，通常更适合承受全局交互成本**。
 
-```math
-Y'=Proj(Y+PE(V))
+### 7.6 PSABlock：把 Attention + FFN 变成一个完整处理单元
+
+PSABlock 可以用 Transformer block 的直觉理解，但必须以固定 YOLO11 实现为准：
+
+```mermaid
+flowchart LR
+    X[输入特征 x] --> A[Attention\n空间/token 间交互]
+    X --> R1((+ Residual))
+    A --> R1
+    R1 --> F[FFN\n逐位置 channel mixing]
+    R1 --> R2((+ Residual))
+    F --> R2
+    R2 --> Y[输出特征]
 ```
 
-必须能从这里推出部署含义：当 `H,W` 较大时，attention matrix 的成本随 `N^2=(HW)^2` 增长；因此 YOLO11 把 C2PSA 放在深层低分辨率特征上，不应仅凭“attention 有全局关系”就把它无条件前移到 P2/P3。
+对应固定实现的简化表达：
 
-### 7.6 PSABlock：Attention 残差 + FFN 残差
-
-固定实现可以写成：
-
-```math
+$$
 x_1=x+Attention(x)
-```
+$$
 
-```math
+$$
 x_2=x_1+FFN(x_1)
-```
+$$
 
-FFN 是 `1×1 Conv: C→2C` 后接 `1×1 Conv: 2C→C`，第二层关闭激活。这里应能解释“Attention 负责 token/空间位置之间的信息交互，FFN 负责每个位置上的通道变换”，而 residual 让原特征可直接通过。
+这里三者的现实含义不同：
 
-### 7.7 C2PSA：只让部分通道进入 PSA
+| 部件 | 它在问什么 | 视觉意义 |
+|---|---|---|
+| Attention | “我应该参考哪些其他位置？” | 跨眼睛、跨轮廓、跨物体区域交换上下文 |
+| FFN | “我拿到这些信息后，如何重新组合 channel？” | 对每个位置的语义特征做非线性变换 |
+| Residual | “原来的信息要不要直接保留？” | 防止每层都必须重新构造完整特征，改善优化与信息传递 |
 
-固定实现先把输入投影成两份隐藏特征：
+以 DMS 为例，一个眼睛小目标的局部纹理可能很弱，但脸部结构、另一只眼睛、眼眶和鼻梁可以提供上下文。Attention 可以让该位置动态参考这些区域；FFN 再对融合后的 channel 表示进行变换。**它不是凭空创造像素细节，而是在已有 feature 中重新组织上下文关系。**
+
+固定实现的 FFN 可理解为：
 
 ```text
-x → 1×1 Conv → split(a, b)
-                    │
-                    ├─ a ─────────────────────────┐
-                    └─ b → PSABlock × n → b'     │
-                                                 concat
-                                                   ↓
-                                               1×1 Conv
-                                                   ↓
-                                                  out
+C channels
+   ↓ 1×1 Conv
+2C channels
+   ↓ activation
+2C channels
+   ↓ 1×1 Conv
+C channels
 ```
 
-可写成：
+因此 Attention 更偏“位置之间交换信息”，FFN 更偏“单个位置内部的通道变换”。
 
-```math
-(a,b)=split(Conv_{1×1}(x)),\qquad
-b'=PSABlocks(b)
+### 7.7 C2PSA：为什么不是所有 channel 都做 Attention
+
+C2PSA 可以看成“CSP 思想 + PSA/Attention”。
+
+```mermaid
+flowchart LR
+    X[输入 B×C×H×W] --> P[1×1 Conv\n通道映射]
+    P --> S{Split channels}
+    S --> A[分支 A\n直接保留]
+    S --> B[分支 B\n进入 PSA]
+    B --> P1[PSABlock]
+    P1 --> P2[PSABlock × n]
+    P2 --> BP[增强后的 B']
+    A --> CAT[Concat A + B']
+    BP --> CAT
+    CAT --> O[1×1 Conv\n输出]
 ```
 
-```math
-y=Conv_{1×1}(Concat(a,b'))
+为什么这样做？因为 Attention 是昂贵的。假设输入有 `C` 个 channel，把全部 channel 都交给 PSA 会让整个深层特征都承担 attention 的计算和内存开销。C2PSA 只让部分 channel 进入 PSA，另一部分走 bypass：
+
+```text
+全部特征
+  ├──────────────→ 原始/低成本路径
+  │
+  └──────────────→ Attention / PSA 路径
+                         ↓
+                 全局上下文增强
+                         ↓
+                    Concat
 ```
 
-所以 C2PSA 不是“整张 feature map 全部做 attention”，而是 CSP 风格地保留一条 bypass，只在部分通道上承担 attention 成本。
+这是一种**表达能力与计算量之间的结构折中**。因此修改 split 比例时，不仅会改变参数/FLOPs，还会改变“有多少 feature channel 能直接获得全局交互”。
 
-### 7.8 DFL：先区分“分布表示/解码”与“DFL loss”
+### 7.8 DFL 只是 YOLO 检测 Loss 中的一种
 
-固定 YOLO11 锚点中 `reg_max=16`；YOLO26 固定实现则需要单独看其 Detect 输出和训练实现，不能把 YOLO11 的 DFL 结论直接迁移过去。
+必须先把 Loss 放回完整视觉任务体系，而不是把“DFL”误认为“YOLO 的全部 loss”：
 
-对一个边界距离 `y`，离散 bin 为 `0,...,K-1`。模型输出 logits `z_i`，softmax 得到：
+```mermaid
+flowchart TB
+    L[Loss] --> C[Classification]
+    L --> R[Regression / Detection]
+    L --> S[Segmentation]
+    L --> K[Keypoint / Pose]
+    L --> M[Metric Learning / ReID]
+    C --> CE[CE / BCE / Focal]
+    R --> IOU[IoU / GIoU / DIoU / CIoU]
+    R --> DFL[DFL]
+    S --> DICE[Dice / BCE / CE / Focal]
+    K --> HM[Heatmap MSE / L1 / Wing]
+    M --> TRI[Triplet / Contrastive]
+```
+
+对 YOLO11，核心检测监督可以抽象成：
+
+```text
+Detect raw outputs
+       │
+       ├── class logits ─────→ BCE
+       │
+       ├── box geometry ─────→ CIoU-style box loss
+       │
+       └── 4 × distance bins → DFL
+```
+
+固定 YOLO11 `reg_max=16`。对一个边界距离 `y`，模型预测 `K` 个离散 bins 的 logits `z_i`：
 
 $$
 p_i=\frac{e^{z_i}}{\sum_{j=0}^{K-1}e^{z_j}}
 $$
 
-推理时用期望得到连续距离：
+训练时令：
 
 $$
-\hat y=\sum_{i=0}^{K-1} i\,p_i
+l=\lfloor y\rfloor,\qquad r=l+1
 $$
-
-训练时目标 `y` 落在相邻两个 bin `l=floor(y)` 与 `r=l+1` 之间，线性权重为：
 
 $$
 w_l=r-y,\qquad w_r=y-l
 $$
 
-DFL loss 可理解为对两个邻近分类目标做加权交叉熵：
+然后用两个相邻 bin 的加权交叉熵监督：
 
 $$
-L_{DFL}=w_l\,CE(z,l)+w_r\,CE(z,r)
+L_{DFL}=w_l CE(z,l)+w_r CE(z,r)
 $$
 
-这里必须区分两件事：**DFL 表示/积分是推理 decode 机制；DFL loss 是训练监督机制。** 两者相关，但不是同一个算子。
+推理时用分布期望恢复连续距离：
 
-### 7.9 最低自检
+$$
+\hat d=\sum_{i=0}^{K-1}i p_i
+$$
 
-至少能够不看资料回答：
+所以必须区分：
 
-1. Conv 为什么通常 `bias=False` 再接 BN？Conv+BN 如何 fuse？
-2. C2f 与普通串行 Bottleneck 堆叠的 tensor 路径有什么不同？
-3. C3k2 中什么时候实际使用 C3k，什么时候使用 Bottleneck？
-4. SPPF 连续三个 `5×5` pooling 为什么可以得到约 `5/9/13` 的有效范围？
-5. Attention 为什么对 `H×W` 很敏感？为什么通常放在深层？
-6. PSABlock 中 Attention、FFN、residual 各自负责什么？
-7. C2PSA 为什么只让部分 channel 进入 PSA？
-8. DFL 为什么能从离散 bins 得到连续距离；它与 DFL loss 分别发生在推理和训练的哪一段？
-9. 修改其中任一模块后，参数量、FLOPs、feature-map shape、感受范围、梯度路径和目标 runtime 算子支持会分别怎么变化？
+```text
+DFL representation / expectation
+        ↓
+推理时把离散分布变成连续距离
 
-如果只能说“C2PSA 是注意力模块”“SPPF 扩大感受野”“DFL 提高定位精度”，还没有达到本页定义的掌握线。
+DFL loss
+        ↓
+训练时监督这个离散分布
+```
+
+两者相关，但不是同一个算子。
+
+#### 7.8.1 目标检测之外还必须掌握哪些 Loss
+
+**分类：**
+
+交叉熵：
+
+$$
+p_j=\frac{e^{z_j}}{\sum_k e^{z_k}},\qquad L=-\log p_y
+$$
+
+BCE：
+
+$$
+L=-[y\log p+(1-y)\log(1-p)],\qquad p=\sigma(z)
+$$
+
+Focal：
+
+$$
+L=-\alpha_t(1-p_t)^\gamma\log(p_t)
+$$
+
+**回归：**
+
+MSE：
+
+$$
+L=\frac{1}{n}\sum_i(x_i-y_i)^2
+$$
+
+MAE：
+
+$$
+L=\frac{1}{n}\sum_i|x_i-y_i|
+$$
+
+Smooth L1：
+
+$$
+L=\begin{cases}
+\frac{1}{2}d^2/\beta,& |d|<\beta\\
+|d|-\frac{1}{2}\beta,& |d|\ge\beta
+\end{cases}
+$$
+
+其中 `d = prediction - target`。它在小误差区近似 L2、大误差区近似 L1，因此常用于更稳健的回归。
+
+**检测框：**
+
+$$
+IoU=\frac{|B_p\cap B_g|}{|B_p\cup B_g|}
+$$
+
+$$
+GIoU=IoU-\frac{|C\setminus(B_p\cup B_g)|}{|C|}
+$$
+
+$$
+DIoU=IoU-\frac{\rho^2}{c^2}
+$$
+
+CIoU 在 DIoU 基础上再加入宽高比项，因此可以分别理解为：
+
+```text
+IoU   → 有没有重叠
+GIoU  → 没重叠时，闭包区域还能提供什么方向
+DIoU  → 中心点应该靠近
+CIoU  → 中心 + 宽高比例也应该一致
+```
+
+**分割：**
+
+Dice：
+
+$$
+Dice=\frac{2|P\cap G|}{|P|+|G|}
+$$
+
+常用 Dice loss：
+
+$$
+L_{Dice}=1-Dice
+$$
+
+它直接关注预测区域与真实区域的重叠，在前景很小、类别极不平衡的分割任务中尤其常见。
+
+**关键点：**
+
+Heatmap 方案常见 MSE：模型预测每个关键点的热图，与 Gaussian target heatmap 做逐像素误差。回归式关键点则可能使用 L1、Smooth L1、Wing Loss 等。关键点任务还经常需要 visibility/occlusion 监督。
+
+**ReID / metric learning：**
+
+Contrastive Loss 的思想是：相似样本拉近，不相似样本推远；Triplet Loss 使用 anchor、positive、negative：
+
+$$
+L=\max(0,d(a,p)-d(a,n)+m)
+$$
+
+其中 `m` 是 margin。
+
+#### 7.8.2 YOLO Loss 不能只看总 loss
+
+即使总 loss：
+
+$$
+L=\lambda_{box}L_{box}+\lambda_{cls}L_{cls}+\lambda_{dfl}L_{dfl}
+$$
+
+下降，也不能直接推出小目标 AP、召回率或部署精度提高。实际分析至少要拆：
+
+```text
+Total loss
+├── box loss
+│   ├── IoU / CIoU behavior
+│   └── localization error
+├── cls loss
+│   ├── class imbalance
+│   └── hard negatives
+└── DFL
+    ├── distance distribution
+    └── decode error
+```
+
+因此读一个新检测器时，第一反应不应该是“它用了什么 loss 名称”，而应该问：**预测量是什么、target 是什么、正样本是谁、loss 惩罚什么、梯度会把哪个预测往哪里推。**
+
+## 8. 最低自检：必须能脱稿解释
+
+### 结构
+
+1. Conv 为什么常见 `bias=False → BN`？BN 的 γ、β 怎么来的？推理时为什么可以 fuse？
+2. 至少画出 C2f 的 split → chain → concat，并解释它与普通串行 Bottleneck 的区别。
+3. C3k2 的外壳是什么？什么时候内部使用 C3k，什么时候使用 Bottleneck？
+4. SPPF 为什么连续三个 `5×5` pooling 对应约 `5/9/13` 的有效范围？
+5. 不看公式解释 Attention：Q、K、V 分别像什么？`QK^T` 在问什么？Softmax 后的权重代表什么？
+6. 为什么视觉 Attention 的计算会对 `H×W` 敏感？为什么深层 feature map 更适合承担它？
+7. PSABlock 中 Attention、FFN、Residual 在现实视觉问题里分别解决什么？
+8. C2PSA 为什么只让部分 channel 进入 PSA？这会同时改变什么表达能力和部署成本？
+
+### 激活函数
+
+9. 写出 ReLU、LeakyReLU、PReLU、GELU、SiLU、Mish、Sigmoid、Softmax 的基本公式，并说出至少一个典型使用位置。
+10. 为什么 YOLO 中间层可以用 SiLU，而分类 logits 通常用 Sigmoid，Attention/DFL 又需要 Softmax？
+
+### Loss
+
+11. CE 与 BCE 的根本区别是什么？为什么 YOLO 分类通常使用 BCE 类监督而不是 softmax CE？
+12. Focal Loss 解决什么样的样本不平衡？γ 改变了什么？
+13. IoU、GIoU、DIoU、CIoU 分别补了什么几何信息？
+14. DFL 为什么要把连续距离变成相邻 bin 的分布？训练和推理分别发生什么？
+15. 除检测外，能否解释 Dice、Heatmap MSE、Wing、Triplet 的 target、误差和用途？
+
+如果只能回答“C2PSA 是注意力”“SPPF 扩大感受野”“DFL 提高定位精度”，仍然没有达到本页定义的掌握线。
