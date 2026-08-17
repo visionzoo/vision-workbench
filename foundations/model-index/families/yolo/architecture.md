@@ -102,3 +102,184 @@ YOLO11 默认不是仅靠一个 `objectness` 数值解释全部置信度。导�
 ## 6. 看一个具体权重时
 
 至少锁定：仓库 revision、配置、scale、权重哈希、输入预处理、P3/P4/P5 节点、stride、输出 tensor、坐标格式、训练专用模块是否已融合，以及 decode/NMS 位于模型内还是模型外。开放词汇模型还要确认文本编码器或词汇嵌入是否仍在运行时图中。
+
+## 7. 基础模块最低掌握线
+
+下面不是要求背源码，而是规定一个“读到模块名后至少能还原到什么程度”的能力基线。目标是看到 YAML、`nn.Module` 或导出图时，能够从 tensor 流、公式和作用三个层次解释，而不是只记模块名称。
+
+### 7.1 `Conv2d(bias=False) → BatchNorm2d → SiLU`
+
+固定 YOLO11 `Conv` 的默认路径就是 `Conv2d(bias=False) → BatchNorm2d → SiLU`（Y019）。至少应能写出三步：
+
+卷积：
+
+\[
+z_{o,i,j}=\sum_{c}\sum_{u,v}W_{o,c,u,v}\,x_{c,i+u,j+v}
+\]
+
+BatchNorm 在训练时对一个 channel 使用 mini-batch 统计量：
+
+\[
+\hat z=\frac{z-\mu_B}{\sqrt{\sigma_B^2+\epsilon}},\qquad
+\mathrm{BN}(z)=\gamma\hat z+\beta
+\]
+
+SiLU：
+
+\[
+\mathrm{SiLU}(x)=x\,\sigma(x)=\frac{x}{1+e^{-x}}
+\]
+
+结构作用必须能解释到：卷积负责局部线性特征提取/下采样/通道映射；BN 改变训练期激活的尺度与偏移并维护推理期 running statistics；SiLU 提供平滑非线性。`bias=False` 与后接 BN 有关：BN 本身已有可学习偏移，训练图没有必要再保留卷积 bias。
+
+部署时还应知道 Conv+BN 可以折叠。若卷积原 bias 为 0，则对输出 channel：
+
+\[
+W' = \frac{\gamma}{\sqrt{\sigma^2+\epsilon}}W,\qquad
+b' = \beta-\frac{\gamma\mu}{\sqrt{\sigma^2+\epsilon}}
+\]
+
+因此“训练图有 BN、推理图没有 BN”不一定是结构错误；先检查是否已经完成等价融合。
+
+### 7.2 C2f：分流、逐级变换、全部拼接
+
+固定实现可压缩为：
+
+```text
+x
+→ 1×1 Conv → [a, b]                 # channel chunk
+                 │
+                 └→ m1 → y1 → m2 → y2 → ... → yn
+
+[a, b, y1, y2, ..., yn]
+→ concat(channel)
+→ 1×1 Conv
+→ out
+```
+
+若隐藏通道为 `c`、内部 block 数为 `n`，第一次 `1×1 Conv` 输出 `2c`，最终 concat 是 `(2+n)c` 个 channel，再由 `cv2` 投影到目标输出通道。它的核心不是“堆 n 个 Bottleneck”，而是保留初始分支和每一级中间结果共同参与最终融合。
+
+必须能区分 C2f 与普通串行堆叠：串行网络主要传递最后一级输出；C2f 显式保留多条短路径，改变特征复用和梯度传播结构。
+
+### 7.3 C3k2：C2f 外壳 + 可替换的内部变换单元
+
+YOLO11 固定实现中 `C3k2` 继承 `C2f`，因此外层仍是上一节的 split/chain/concat。差异集中在 `m`：
+
+```text
+C3k2
+├─ outer topology: C2f
+└─ each m[i]
+   ├─ c3k=False → Bottleneck
+   └─ c3k=True  → C3k(..., n=2)
+```
+
+而 `C3k` 本身继承 C3：两条支路，一条经过若干 Bottleneck，另一条较短，最后 concat 后投影。这里最重要的能力是**不能只凭 `C3k2` 这个类名推断内部计算**；必须继续看 `c3k`、`n`、shortcut、kernel、宽深度缩放和模型 YAML 的实参。
+
+### 7.4 SPPF：连续 `5×5` max-pool 近似多尺度池化
+
+固定实现的主路径是：
+
+```text
+x0 = Conv1x1(x)
+x1 = MaxPool5x5(x0)
+x2 = MaxPool5x5(x1)
+x3 = MaxPool5x5(x2)
+out = Conv1x1(concat[x0, x1, x2, x3])
+```
+
+stride=1、same padding 下，连续三个 `5×5` max-pool 的有效感受范围对应约 `5×5`、`9×9`、`13×13`，因此源码把它描述为与并行 `SPP(k=(5,9,13))` 等价的快速实现（Y019）。
+
+必须能说明：SPPF 聚合的是**同一空间分辨率上的更大范围上下文**；它不增加输出空间分辨率，也不能恢复下采样前已经丢失的小目标细节。
+
+### 7.5 Attention：先把 `H×W` 看成 token，再做 Q/K/V 交互
+
+固定 YOLO11 Attention 输入为 `B×C×H×W`，令 `N=H×W`，用 `1×1 Conv` 生成 Q/K/V，再按多头 reshape。对单个 head，可用标准形式理解：
+
+\[
+A=\operatorname{softmax}\left(\frac{Q^T K}{\sqrt{d_k}}\right),\qquad
+Y=V A^T
+\]
+
+其中 `A` 的空间交互尺寸是 `N×N`。固定实现还在 value 上增加一个 depthwise `3×3 Conv` 的 positional encoding，再经过 `1×1` projection（Y019）：
+
+\[
+Y'=\operatorname{Proj}(Y+\operatorname{PE}(V))
+\]
+
+必须能从这里推出部署含义：当 `H,W` 较大时，attention matrix 的成本随 `N^2=(HW)^2` 增长；因此 YOLO11 把 C2PSA 放在深层低分辨率特征上，不应仅凭“attention 有全局关系”就把它无条件前移到 P2/P3。
+
+### 7.6 PSABlock：Attention 残差 + FFN 残差
+
+固定实现可以写成：
+
+\[
+x_1=x+\operatorname{Attention}(x)
+\]
+
+\[
+x_2=x_1+\operatorname{FFN}(x_1)
+\]
+
+FFN 是 `1×1 Conv: C→2C` 后接 `1×1 Conv: 2C→C`，第二层关闭激活。这里应能解释“Attention 负责 token/空间位置之间的信息交互，FFN 负责每个位置上的通道变换”，而 residual 让原特征可直接通过。
+
+### 7.7 C2PSA：只让部分通道进入 PSA
+
+固定实现先把输入投影成两份隐藏特征：
+
+```text
+x → 1×1 Conv → split(a, b)
+                    │
+                    ├─ a ─────────────────────────┐
+                    └─ b → PSABlock × n → b'     │
+                                                 concat
+                                                   ↓
+                                               1×1 Conv
+                                                   ↓
+                                                  out
+```
+
+可写成：
+
+\[
+(a,b)=\operatorname{split}(\operatorname{Conv}_{1\times1}(x)),\qquad
+b'=\operatorname{PSABlocks}(b)
+\]
+
+\[
+y=\operatorname{Conv}_{1\times1}(\operatorname{Concat}(a,b'))
+\]
+
+所以 C2PSA 不是“整张 feature map 全部做 attention”，而是 CSP 风格地保留一条 bypass，只在部分通道上承担 attention 成本。
+
+### 7.8 DFL：先区分“分布表示/解码”与“DFL loss”
+
+YOLO11 的回归不是直接输出 `l,t,r,b` 四个连续数，而是每个方向输出 `K=reg_max` 个 logits。对某个方向，softmax 后：
+
+\[
+p_i=\frac{e^{z_i}}{\sum_{j=0}^{K-1}e^{z_j}}
+\]
+
+推理阶段 DFL decoder 用离散分布的期望得到连续距离：
+
+\[
+\hat d=\sum_{i=0}^{K-1} i\,p_i
+\]
+
+四个方向分别得到 `l,t,r,b`，再结合 anchor point 解码成框。**DFL decoder 是模型输出表示的一部分，DFL loss 是训练监督函数**；两者相关但不能混成一个概念。训练公式见 [Data and training](data-and-training.md)。
+
+YOLO11 固定锚点中 `reg_max=16`；YOLO26 固定实现则需要单独看其版本与配置，不能把 YOLO11 的 16-bin 回归习惯直接外推（Y019、Y023）。
+
+## 8. 模块掌握自检
+
+不要求默写类定义，但下面问题应能在不查二手文章的情况下回答或快速从源码推出：
+
+1. 为什么 Ultralytics `Conv` 默认 `bias=False`，Conv+BN 在部署时怎么融合？
+2. C2f 的 concat 里到底有哪些 tensor，为什么不是只 concat 两条最终分支？
+3. C3k2 与 C2f 的外层拓扑差在哪里；`c3k=True/False` 实际改变哪里？
+4. 三次串行 `5×5` max-pool 为什么能对应 `5/9/13` 的有效范围？
+5. Attention 中 Q、K、V 和 `N×N` attention matrix 的 shape 如何推导？
+6. PSABlock 与 C2PSA 分别在哪一级做 residual、在哪一级做 channel split？
+7. DFL 为什么能从离散 bins 得到连续距离；它与 DFL loss 分别发生在推理和训练的哪一段？
+8. 修改其中任一模块后，参数量、FLOPs、feature-map shape、感受范围、梯度路径和目标 runtime 算子支持会分别怎么变化？
+
+如果只能说“C2PSA 是注意力模块”“SPPF 扩大感受野”“DFL 提高定位精度”，还没有达到本页定义的掌握线。
