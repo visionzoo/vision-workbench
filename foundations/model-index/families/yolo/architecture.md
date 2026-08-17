@@ -113,31 +113,31 @@ YOLO11 默认不是仅靠一个 `objectness` 数值解释全部置信度。导�
 
 卷积：
 
-\[
+$$
 z_{o,i,j}=\sum_{c}\sum_{u,v}W_{o,c,u,v}\,x_{c,i+u,j+v}
-\]
+$$
 
 BatchNorm 在训练时对一个 channel 使用 mini-batch 统计量：
 
-\[
+$$
 \hat z=\frac{z-\mu_B}{\sqrt{\sigma_B^2+\epsilon}},\qquad
 \mathrm{BN}(z)=\gamma\hat z+\beta
-\]
+$$
 
 SiLU：
 
-\[
+$$
 \mathrm{SiLU}(x)=x\,\sigma(x)=\frac{x}{1+e^{-x}}
-\]
+$$
 
 结构作用必须能解释到：卷积负责局部线性特征提取/下采样/通道映射；BN 改变训练期激活的尺度与偏移并维护推理期 running statistics；SiLU 提供平滑非线性。`bias=False` 与后接 BN 有关：BN 本身已有可学习偏移，训练图没有必要再保留卷积 bias。
 
 部署时还应知道 Conv+BN 可以折叠。若卷积原 bias 为 0，则对输出 channel：
 
-\[
+$$
 W' = \frac{\gamma}{\sqrt{\sigma^2+\epsilon}}W,\qquad
 b' = \beta-\frac{\gamma\mu}{\sqrt{\sigma^2+\epsilon}}
-\]
+$$
 
 因此“训练图有 BN、推理图没有 BN”不一定是结构错误；先检查是否已经完成等价融合。
 
@@ -195,16 +195,16 @@ stride=1、same padding 下，连续三个 `5×5` max-pool 的有效感受范围
 
 固定 YOLO11 Attention 输入为 `B×C×H×W`，令 `N=H×W`，用 `1×1 Conv` 生成 Q/K/V，再按多头 reshape。对单个 head，可用标准形式理解：
 
-\[
+$$
 A=\operatorname{softmax}\left(\frac{Q^T K}{\sqrt{d_k}}\right),\qquad
 Y=V A^T
-\]
+$$
 
 其中 `A` 的空间交互尺寸是 `N×N`。固定实现还在 value 上增加一个 depthwise `3×3 Conv` 的 positional encoding，再经过 `1×1` projection（Y019）：
 
-\[
+$$
 Y'=\operatorname{Proj}(Y+\operatorname{PE}(V))
-\]
+$$
 
 必须能从这里推出部署含义：当 `H,W` 较大时，attention matrix 的成本随 `N^2=(HW)^2` 增长；因此 YOLO11 把 C2PSA 放在深层低分辨率特征上，不应仅凭“attention 有全局关系”就把它无条件前移到 P2/P3。
 
@@ -212,13 +212,13 @@ Y'=\operatorname{Proj}(Y+\operatorname{PE}(V))
 
 固定实现可以写成：
 
-\[
+$$
 x_1=x+\operatorname{Attention}(x)
-\]
+$$
 
-\[
+$$
 x_2=x_1+\operatorname{FFN}(x_1)
-\]
+$$
 
 FFN 是 `1×1 Conv: C→2C` 后接 `1×1 Conv: 2C→C`，第二层关闭激活。这里应能解释“Attention 负责 token/空间位置之间的信息交互，FFN 负责每个位置上的通道变换”，而 residual 让原特征可直接通过。
 
@@ -240,14 +240,14 @@ x → 1×1 Conv → split(a, b)
 
 可写成：
 
-\[
+$$
 (a,b)=\operatorname{split}(\operatorname{Conv}_{1\times1}(x)),\qquad
 b'=\operatorname{PSABlocks}(b)
-\]
+$$
 
-\[
+$$
 y=\operatorname{Conv}_{1\times1}(\operatorname{Concat}(a,b'))
-\]
+$$
 
 所以 C2PSA 不是“整张 feature map 全部做 attention”，而是 CSP 风格地保留一条 bypass，只在部分通道上承担 attention 成本。
 
@@ -255,15 +255,15 @@ y=\operatorname{Conv}_{1\times1}(\operatorname{Concat}(a,b'))
 
 YOLO11 的回归不是直接输出 `l,t,r,b` 四个连续数，而是每个方向输出 `K=reg_max` 个 logits。对某个方向，softmax 后：
 
-\[
+$$
 p_i=\frac{e^{z_i}}{\sum_{j=0}^{K-1}e^{z_j}}
-\]
+$$
 
 推理阶段 DFL decoder 用离散分布的期望得到连续距离：
 
-\[
+$$
 \hat d=\sum_{i=0}^{K-1} i\,p_i
-\]
+$$
 
 四个方向分别得到 `l,t,r,b`，再结合 anchor point 解码成框。**DFL decoder 是模型输出表示的一部分，DFL loss 是训练监督函数**；两者相关但不能混成一个概念。训练公式见 [Data and training](data-and-training.md)。
 
