@@ -4,13 +4,13 @@ status: working
 type: research-question
 rigor: standard
 created: 2026-08-11
-updated: 2026-08-12
+updated: 2026-08-18
 confidence: low
 provenance: conversation-draft
 evidence_status: unverified
 owner_review: pending
 ip_review: pending
-tags: [dms, ir, eye, small-target, roi, information-preservation, eyelid, openness, deployment]
+tags: [dms, ir, eye, small-target, roi, information-preservation, eyelid, openness, observability, uncertainty, selective-measurement, deployment]
 related: [../experiments/upper-face-roi-information-preservation.md, dms-eye-visibility-and-localization-reliability.md, ../experiments/dms-eye-keypoint-model-selection.md, ../../foundations/tasks/2d-landmark-localization.md, ../../foundations/mechanisms/keypoint-output-representations.md, ../../engineering/diagnostics/ir-camera-input-chain-and-chroma-anomaly.md]
 ---
 
@@ -200,3 +200,371 @@ R1 第一阶段只有同时满足以下条件才可关闭或重构：
 - 发现内容依赖不可披露资产。
 
 当前结论仅是：R1 已满足 Research 准入条件，尚无任何机制假设被验证。
+
+## 13. Candidate paper direction: observability-aware continuous eye openness estimation
+
+本节把 R1 收敛为一个候选论文问题，不改变 R1 当前 `working / unverified` 的证据状态，也不承诺必须设计新 backbone、新 detector 或端到端联合网络。论文只有在下面的可证伪命题得到独立证据支持后才成立。
+
+### 13.1 Working title
+
+候选英文标题：
+
+> **When Is a Tiny Eye Measurable? Observability-Aware Continuous Eye Openness Estimation under Infrared Degradations**
+
+更保守的工程化标题：
+
+> **Observability-Aware Continuous Eye Openness Estimation for Small-Scale Infrared Driver Monitoring**
+
+核心研究对象不是“闭眼二分类准确率”，也不是“眼睛检测 AP”，而是：
+
+> 对小尺度 IR 眼部，能否在恢复眼睑结构和连续开合度的同时，判断当前输入是否仍足以支持可靠量测，并在不可量测时主动输出 UNKNOWN？
+
+### 13.2 Why this is a research problem rather than a project report
+
+论文需要区分三个经常被混为一谈的能力：
+
+~~~text
+Eye existence / detection
+        ↓
+Eyelid localization / structure recovery
+        ↓
+Continuous openness measurability
+~~~
+
+可能存在以下稳定失配：
+
+~~~text
+Eye detection        = success
+Eye localization     = success
+Eyelid structure     = unstable
+Continuous openness  = unreliable
+~~~
+
+因此，“检测到眼睛”不能作为“可量测”的替代标签；同样，landmark 有坐标输出也不能证明该点可见、可标注或足以支持眼状态判断。
+
+本论文候选的核心区分为：
+
+~~~text
+findable
+    ≠
+visible
+    ≠
+usable_for_openness
+~~~
+
+其中 `usable_for_openness` 是任务相关可观测性，而不是通用可见性。
+
+### 13.3 Candidate scientific claims
+
+论文最终最多尝试支持以下有边界的命题，不能预先写成结论：
+
+| ID | 候选命题 | 必须被什么证据支持 |
+|---|---|---|
+| P1 | 小尺度眼部的“可检测尺度”和“可连续量测尺度”不是同一个边界 | 按有效眼宽/高分层后，检测、结构误差和 openness 误差出现稳定且可复现的不同失效拐点 |
+| P2 | `visible` 不能充分预测 `usable_for_openness` | 在 visibility 相近样本中，存在与尺度、反光、模糊、姿态或裁断相关的系统性 measurability 差异 |
+| P3 | 显式 observability / uncertainty 可以减少灾难性错误量测 | 在冻结 coverage 下，selective measurement 的风险显著低于仅按 detector/keypoint score 拒识的基线 |
+| P4 | 结构化连续量测比强制 open/closed 二分类提供更稳定的下游证据 | 连续 openness 在中间状态、困难切片或跨域条件下改善 calibration、阈值稳定性或时序判决，而不是只提高训练域分类分数 |
+| P5 | 真实部署链会改变细粒度可量测边界 | 保存同一输入或建立语义等价输入后，PC、ONNX、INT8/目标端的差异能被定位到明确边界，并影响结构/openness 而非只影响总体 AP |
+
+若 P1–P5 中只有“换模型后平均指标更高”成立，则论文方向应降级为普通工程优化，不使用 observability 作为主张。
+
+### 13.4 Candidate method abstraction
+
+第一阶段不绑定具体 backbone。最小系统抽象为：
+
+~~~mermaid
+flowchart TD
+    A["IR face / upper-face input"] --> B["Fine-grained visual representation"]
+    B --> C["Eyelid structure head"]
+    B --> D["Observability / usability head"]
+    B --> E["Optional direct openness head"]
+    C --> F["Geometry-derived openness"]
+    D --> G{"Reliable enough to measure?"}
+    E --> H["Continuous openness candidate"]
+    F --> H
+    G -->|YES| I["VALID + openness + confidence"]
+    G -->|NO| J["UNKNOWN + invalid reason"]
+    H --> I
+~~~
+
+候选实现可以是：
+
+- direct coordinate regression；
+- HRNet-style heatmap；
+- eyelid contour / segmentation；
+- geometry + direct openness multi-head；
+- detector / pose 一体化路线。
+
+这些是竞争实现，不是论文贡献本身。只有受控实验表明某种结构机制是可量测边界的主要限制时，才把网络结构升级为方法贡献。
+
+### 13.5 Output representation
+
+建议最小研究输出为：
+
+~~~text
+structure:
+  eyelid landmarks | heatmaps | contour | equivalent geometry
+
+observability:
+  VALID | UNKNOWN
+
+openness:
+  continuous normalized value
+
+confidence_or_uncertainty:
+  calibrated score or distribution
+
+invalid_reason:
+  too-small | blur | reflection | occlusion | pose | truncation | input-anomaly | other
+~~~
+
+连续开合度的 Oracle 不能只由同一组预测关键点公式反推，否则会形成自证循环。至少保留两类候选定义并在 pilot 阶段验证人工一致性：
+
+1. 独立人工或高质量结构标注导出的连续 geometry Oracle；
+2. 与最终 DMS 需求一致、但不依赖候选模型自身输出的独立 openness 标注或排序 Oracle。
+
+若二者一致性不足，先修 Oracle，不训练复杂网络。
+
+### 13.6 Selective measurement formulation
+
+论文不要求模型对所有帧强制给出可信 openness。令：
+
+- `o` 为真实连续开合度；
+- `o_hat` 为预测；
+- `q` 为可量测置信度；
+- `tau` 为冻结的接受阈值。
+
+推理规则为：
+
+~~~text
+q >= tau  →  VALID, report o_hat
+q <  tau  →  UNKNOWN
+~~~
+
+核心评价不只报告全样本 MAE，而要报告 risk–coverage：
+
+~~~text
+coverage ↑  → 保留更多样本
+risk     ↑  → 通常承担更多困难/不可量测样本
+~~~
+
+至少比较：
+
+- detector confidence；
+- keypoint/heatmap confidence；
+- visibility score；
+- explicit `usable_for_openness`；
+- uncertainty-aware selective measurement。
+
+只有在相同 coverage 下风险下降，才能说明 observability 信号具有独立决策价值。
+
+### 13.7 Controlled degradation axes
+
+论文实验优先使用与真实 DMS 一致、但可单变量控制的退化轴：
+
+| Axis | 主要回答的问题 |
+|---|---|
+| effective eye width / height | 检测可行尺度与连续量测可行尺度是否分离 |
+| blur / motion | 高频眼睑结构丢失是否早于 eye existence 丢失 |
+| reflection / glasses | 局部高亮是否导致 visible 与 usable 解耦 |
+| occlusion | 部分结构缺失时模型是否强行补全坐标或状态 |
+| yaw / pitch / side face | 透视压缩和自遮挡如何改变结构与 measurability |
+| ROI shift / truncation | 上游 face/eye 定位误差何时跨过量测失效边界 |
+| input-chain anomaly | NV12/NV21、range、亮度/色度或目标端输入语义是否制造额外失效 |
+
+退化实验的目标不是生成一张 robustness 排名表，而是寻找：
+
+> 从“仍可检测”到“仍可定位”再到“仍可连续量测”的任务相关失效边界。
+
+### 13.8 Experimental protocols
+
+#### Protocol A: Oracle ROI
+
+目的：隔离 fine-grained representation 与 observability。
+
+~~~text
+source image
+→ oracle / frozen high-quality eye ROI
+→ structure + observability + openness
+~~~
+
+这个协议回答“已知眼睛在哪里以后还能不能量测”，不让 detector 失败掩盖细粒度问题。
+
+#### Protocol B: Predicted ROI
+
+目的：评价真实 pipeline。
+
+~~~text
+source image
+→ face / eye detector
+→ predicted ROI
+→ structure + observability + openness
+~~~
+
+与 Protocol A 对照后至少区分：
+
+- Oracle 成功、Predicted 失败 → detection / crop bottleneck；
+- 两者都失败 → source information / representation / fine-grained head bottleneck；
+- structure 正确、openness 错误 → measurement definition / calibration bottleneck；
+- PC 正确、target 错误 → deployment / input semantic bottleneck。
+
+#### Protocol C: Deployment equivalence
+
+使用保存的同一输入 tensor 或可证明语义等价的输入，逐层比较：
+
+~~~text
+PC FP32
+→ ONNX
+→ converted model
+→ target runtime / INT8
+~~~
+
+论文不能把输入格式、ROI、resize 或 decode 不一致造成的收益/退化归因给模型。
+
+### 13.9 Baseline ladder
+
+第一篇论文不需要一次比较所有新模型，优先形成能回答科学问题的最小梯度：
+
+| Baseline | 输出 | 目的 |
+|---|---|---|
+| B0 binary eye-state classifier | open / closed | 现有离散任务参考 |
+| B1 structure only | landmarks / heatmap + geometry openness | 判断结构恢复能否替代直接分类 |
+| B2 structure + visibility | geometry + visible | 判断通用 visibility 是否足够 |
+| B3 structure + task-specific usability | geometry + usable_for_openness | 判断任务相关 observability 的增量价值 |
+| B4 structure + usability + calibrated uncertainty/selective output | VALID/UNKNOWN + openness | 检验最终论文主张 |
+
+PFLD-style regression 与 HRNet-style heatmap 优先承担 B1/B2 的机制对照。YOLO26 Pose、RF-DETR Keypoint 或其他整图一体化方案只有在上游实例发现被证明是主要瓶颈时才进入完整系统比较。
+
+### 13.10 Metrics
+
+#### Detection / ROI
+
+- correct-location raw candidate recall；
+- operating-point recall / precision；
+- false positives per frame / ROI；
+- ROI completeness / truncation；
+- eye-size-binned failure rate。
+
+#### Structure
+
+- normalized landmark / contour error；
+- median、P90、P95；
+- catastrophic failure rate；
+- temporal jitter；
+- visible / occluded / side-face / reflection slices。
+
+#### Continuous openness
+
+- MAE / median absolute error；
+- signed bias；
+- rank / linear correlation with independent Oracle；
+- open / intermediate / closed separability；
+- per-size and per-degradation failure boundary。
+
+#### Observability / selective measurement
+
+- AUROC / AUPRC for `usable_for_openness`；
+- calibration / ECE；
+- risk–coverage curve；
+- catastrophic-error catch rate at frozen valid-retention points；
+- UNKNOWN rate by degradation slice；
+- domain-holdout threshold stability。
+
+#### Downstream DMS oracle
+
+- false-open / false-closed；
+- blink event errors；
+- sustained-closure / fatigue false alarms and misses；
+- event delay；
+- invalid/UNKNOWN 对最终状态机的影响。
+
+时序指标只用于验证单帧量测是否真的有业务价值，不允许用 smoothing 掩盖单帧不可量测性。
+
+### 13.11 Paper-worthy gates
+
+该方向至少满足以下条件，才值得从 R1 中抽成论文实施计划：
+
+1. **Oracle gate**：continuous openness 与 `usable_for_openness` 有可接受的人工一致性和稳定标注合同；
+2. **Boundary gate**：至少一个困难轴上复现“检测仍可用但细粒度量测已失效”的独立边界；
+3. **Observability gate**：task-specific observability 在相同 coverage 下显著优于 detector score、keypoint score 或通用 visibility 基线；
+4. **Measurement gate**：连续结构量测在困难切片或跨域条件下提供二分类没有提供的稳定信息；
+5. **Causality gate**：收益不能由更大输入、更大模型、更多数据、不同 ROI 或不同后处理解释；
+6. **Deployment gate**：至少在一个真实目标运行时验证关键结论没有被量化和输入语义破坏；
+7. **Downstream gate**：改进至少能解释或改善一个真实 DMS 下游错误类型，而不只是离线平均指标。
+
+若第 2 或第 3 项失败，应放弃“observability-aware”作为论文主轴；若第 4 项失败，应重新评估 continuous openness 是否值得替代直接状态分类。
+
+### 13.12 Negative results that still change the project
+
+以下负结果也有研究和工程价值，但不应包装成正向论文结论：
+
+- 检测与 continuous measurement 的失效尺度基本一致 → “任务边界分离”假设被削弱；
+- visibility 已经等价于 usable → 不需要额外 task-specific observability head；
+- risk–coverage 没有优于简单 confidence threshold → uncertainty 设计没有独立价值；
+- 更精确 landmarks 不改善 openness / event → fine-grained geometry 不是当前主瓶颈；
+- Oracle ROI 显著优于 predicted ROI → 论文应转向定位/ROI 或 small-target detection；
+- PC 与目标端出现新增结构误差 → 优先转向部署语义/量化边界，而不是继续加模型复杂度。
+
+### 13.13 Position of YOLO, STAL and small-target assignment
+
+YOLO11/YOLO26、DFL、TaskAlignedAssigner、STAL 或 P2/P3 等机制在本论文中是候选上游解释，不是默认主贡献。
+
+只有满足以下链路时才升级为核心实验：
+
+~~~text
+small eye miss
+→ diagnostic low-threshold raw candidate absent
+→ input / ROI observability 已通过
+→ feature representation 或 positive allocation 成为主要嫌疑
+→ controlled assignment / feature-level intervention
+~~~
+
+如果 raw candidate 已经存在而最终被阈值、decode、量化或 ROI 逻辑丢掉，则不应通过修改 label assignment 解决读出问题。
+
+### 13.14 Candidate paper narrative
+
+若证据支持，论文叙事应保持以下顺序：
+
+~~~text
+Tiny IR eye
+    ↓
+Eye can still be detected
+    ↓
+But fine-grained measurability may already fail
+    ↓
+Detection / visibility confidence is insufficient to identify that boundary
+    ↓
+Task-specific observability + structured continuous openness
+    ↓
+Selective VALID / UNKNOWN measurement
+    ↓
+Lower risk under scale / blur / reflection / occlusion / pose / ROI errors
+    ↓
+Confirmed on the deployment chain and downstream DMS oracle
+~~~
+
+论文不应写成：
+
+~~~text
+new backbone
++ attention module
++ new loss
+→ higher score
+~~~
+
+除非 R1 的受控实验先证明某个具体结构机制就是首要因果瓶颈。
+
+### 13.15 Execution order
+
+在不打乱当前项目主线的前提下，论文工作按以下顺序附着在现有任务上：
+
+1. 完成 P0/G0：统一训练、PC、目标端的 ROI、resize、输入和 evaluator 合同；
+2. 从现有数据建立一个小而严格的 `eye-observability-v1` 标注子集，先验证 openness / usable 的人工一致性；
+3. 用 Oracle ROI 测量有效眼像素与 blur/reflection/pose 等因素下的结构和 openness 边界；
+4. 复用 PFLD / HRNet 选型实验建立 B1/B2；
+5. 只有存在明确 observability gap 时实现 B3/B4；
+6. 再接回 predicted ROI，判断 detector、assignment、crop 是否成为瓶颈；
+7. 最后做 ONNX/INT8/目标端与时序 DMS 验证；
+8. 达到 paper-worthy gates 后再拆出独立实验计划、结果表和论文写作资产。
+
+因此，当前论文方向只是 R1 的一个收敛目标，不改变现阶段最优先的工程动作：先证明输入、ROI、评价器和部署语义是一致的，再解释模型效果。
